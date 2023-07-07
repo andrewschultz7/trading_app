@@ -39,10 +39,6 @@ const chart = {
 };
 
 
-const round = (number) => {
-  return number !== null && number !== undefined ? +(number.toFixed(2)) : null;
-};
-
 
 function App() {
   const [series, setSeries] = useState([]);
@@ -100,11 +96,6 @@ function App() {
 
   return (
     <div>
-      <div className="warning">
-        FOR ENTERTAINMENT PURPOSES ONLY!
-        <br />
-        DO NOT USE THIS SITE AS FINANCIAL ADVICE!
-      </div>
       <div className="ticker">Sample Data</div>
       <div className={['price', direction].join(' ')}>
         ${price} {directionEmojis[direction]}

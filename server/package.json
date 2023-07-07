@@ -1,0 +1,25 @@
+{
+  "name": "trading_app",
+  "version": "1.0.0",
+  "description": "��#\u0000 \u0000t\u0000r\u0000a\u0000d\u0000i\u0000n\u0000g\u0000_\u0000a\u0000p\u0000p\u0000\r\u0000 \u0000",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/andrewschultz7/trading_app.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/andrewschultz7/trading_app/issues"
+  },
+  "homepage": "https://github.com/andrewschultz7/trading_app#readme",
+  "dependencies": {
+    "express": "^4.18.2",
+    "nodemon": "^2.0.22",
+    "sequelize": "^6.32.1",
+    "sqlite3": "^5.1.6"
+  }
+}
