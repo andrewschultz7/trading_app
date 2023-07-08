@@ -1,13 +1,19 @@
 const { Sequelize } = require("sequelize");
 
+// Establish dynamic path to local db
+const dotenv = require("dotenv");
+
 //Establish connections to routes
 const express = require("express");
 const app = express();
+const cors = require("cors");
+app.use(cors());
 
 // Establish sql database
 const sequelize = new Sequelize("root", "root", "root", {
   host: "localhost",
   dialect: "sqlite",
+  // add path from trading_data.db following the storage key
   storage: "C:\\Users\\b_mat\\Desktop\\trading_app\\trading_data.db",
 });
 const router = express.Router();
@@ -20,6 +26,11 @@ const { HistoricalData } = require("./tables/historicalDataTable");
 
 const historicalDataRouter = require("./routes/historicalData");
 app.use("/", historicalDataRouter);
+
+// Load env variables
+
+dotenv.config();
+
 //Test Routes
 
 app.get("/", (req, res) => {
@@ -30,6 +41,7 @@ app.get("/", (req, res) => {
   }
 });
 
+// connect to DB
 try {
   sequelize.authenticate();
   console.log("Connection to database has been established successfully.");
@@ -37,6 +49,7 @@ try {
   console.error("Unable to connect to the database:", error);
 }
 
+// connect to server
 app.listen((port = 8080), () => {
   console.log(`Server running. Listening on port ${port}.`);
 });

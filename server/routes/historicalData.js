@@ -12,11 +12,21 @@ const { HistoricalData } = require("../tables/historicalDataTable")
 
 router.get("/historical", async (req, res) => {
     try {
-        const data = await HistoricalData.findAll();
-        return res.json(data);
+      const data = await HistoricalData.findAll();
+
+      // Calculate the one-fourth index to split the data
+      const oneFourthIndex = Math.ceil(data.length / 10);
+
+      // Extract the first one-fourth of the data
+      const oneFourthData = data.slice(0, oneFourthIndex);
+
+      return res.json(oneFourthData);
     } catch (err) {
-        console.log(err);
+      console.log(err);
+      return res.status(500).json({ error: "Failed to retrieve historical data" });
     }
-})
+  });
+
+
 
 module.exports = router
