@@ -1,7 +1,7 @@
 const { Sequelize, DataTypes } = require("sequelize");
 const sequelize = new Sequelize({
     dialect: "sqlite",
-    storage: "C:\\Users\\b_mat\\Desktop\\trading_app\\trading_data.db",
+    storage: "./trading_data.db",
   });
 const express = require('express');
 const router = express.Router();

@@ -13,8 +13,8 @@ app.use(cors());
 const sequelize = new Sequelize("root", "root", "root", {
   host: "localhost",
   dialect: "sqlite",
-  // add path from trading_data.db following the storage key
-  storage: "C:\\Users\\b_mat\\Desktop\\trading_app\\trading_data.db",
+  // add path from trading_data.db following the storage key below
+  storage: "./trading_data.db",
 });
 const router = express.Router();
 
