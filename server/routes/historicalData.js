@@ -10,23 +10,36 @@ app.use(express.json()); // Middleware for parsing JSON bodies
 app.use(express.urlencoded({ extended: true })); // Middleware for parsing URL-encoded bodies
 const { HistoricalData } = require("../tables/historicalDataTable")
 
-router.get("/historical", async (req, res) => {
-    try {
-      const data = await HistoricalData.findAll();
+const NodeCache = require('node-cache');
+const cache = new NodeCache();
 
-      // Calculate the one-fourth index to split the data
-      const oneFourthIndex = Math.ceil(data.length / 10);
+router.get('/historical', async (req, res) => {
+  try {
+    // Check if the data is already cached
+    const cachedData = cache.get('historicalData');
 
-      // Extract the first one-fourth of the data
-      const oneFourthData = data.slice(0, oneFourthIndex);
-
-      return res.json(oneFourthData);
-    } catch (err) {
-      console.log(err);
-      return res.status(500).json({ error: "Failed to retrieve historical data" });
+    if (cachedData) {
+      // Return the cached data
+      return res.json(cachedData);
     }
-  });
 
+    // Fetch the data from the database
+    const data = await HistoricalData.findAll();
 
+    // Calculate the one-fourth index to split the data
+    const oneFourthIndex = Math.ceil(data.length / 2);
 
-module.exports = router
+    // Extract the first one-fourth of the data
+    const oneFourthData = data.slice(0, oneFourthIndex);
+
+    // Cache the data for future requests
+    cache.set('historicalData', oneFourthData);
+
+    return res.json(oneFourthData);
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({ error: 'Failed to retrieve historical data' });
+  }
+});
+
+module.exports = router;

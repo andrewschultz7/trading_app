@@ -145,12 +145,6 @@ import { useEffect, useState, useRef, useMemo } from 'react';
 import './App.css';
 import Chart from 'react-apexcharts';
 
-async function getStonks(): Promise<any> {
-  const stonksUrl = `http://localhost:8080/historical`;
-  const response = await fetch(stonksUrl);
-  return response.json();
-}
-
 const directionEmojis = {
   up: '🚀',
   down: '🔻',
@@ -198,62 +192,81 @@ const initialAnnotations = [
   },
 ];
 
-function App() {
+const chartOptions = {
+  chart: {
+    type: 'candlestick',
+    height: 350,
+  },
+  series: [],
+  title: {
+    text: 'CandleStick Chart',
+    align: 'left',
+  },
+  xaxis: {
+    type: 'datetime',
+  },
+  yaxis: {
+    tooltip: {
+      enabled: true,
+    },
+  },
+  annotations: {
+    points: initialAnnotations,
+  },
+};
+
+const App = () => {
   const chartRef = useRef(null);
-  const [series, setSeries] = useState([]);
-  const [price, setPrice] = useState(-1);
-  const [prevPrice, setPrevPrice] = useState(-1);
-  const [priceTime, setPriceTime] = useState(null);
-  const [annotations, setAnnotations] = useState(initialAnnotations);
+  const [chartData, setChartData] = useState({
+    series: [],
+    price: -1,
+    prevPrice: -1,
+    priceTime: null,
+    annotations: initialAnnotations,
+  });
 
-  useEffect(() => {
-    let timeoutId;
+  const fetchData = useCallback(async () => {
+    try {
+      const stonksUrl = `http://localhost:8080/historical`;
+      const response = await fetch(stonksUrl);
+      const data = await response.json();
 
-    async function getLatestPrice() {
-      try {
-        const data = await getStonks();
-        const prices = data.map((item) => ({
-          x: new Date(item.Datetime),
-          y: [item.Open, item.High, item.Low, item.Close],
-        }));
+      const prices = data.map((item) => ({
+        x: new Date(item.Datetime).getTime(),
+        y: [item.Open, item.High, item.Low, item.Close],
+      }));
 
-        const latestPrice = parseFloat(prices[prices.length - 1].y[3]);
-        setPrevPrice(price);
-        setPrice(latestPrice);
-        setPriceTime(new Date(prices[prices.length - 1].x));
-        setSeries([{ data: prices }]);
-      } catch (error) {
-        console.log(error);
-      }
+      const latestPrice = parseFloat(prices[prices.length - 1].y[3]);
 
-      timeoutId = setTimeout(getLatestPrice, 5000 * 2);
+      setChartData((prevChartData) => ({
+        ...prevChartData,
+        prevPrice: prevChartData.price !== latestPrice ? latestPrice : prevChartData.prevPrice,
+        price: latestPrice,
+        priceTime: new Date(prices[prices.length - 1].x),
+        series: [{ data: prices }],
+      }));
+    } catch (error) {
+      console.log(error);
     }
-
-    getLatestPrice();
-
-    return () => {
-      clearTimeout(timeoutId);
-    };
   }, []);
 
-  const direction = useMemo(() => {
-    if (prevPrice < price) {
-      return 'up';
-    } else if (prevPrice > price) {
-      return 'down';
-    } else {
-      return '';
-    }
-  }, [prevPrice, price]);
+  useEffect(() => {
+    fetchData();
+    const interval = setInterval(fetchData, 5000 * 2);
 
-  const handleChartClick = ({ dataPointIndex }) => {
+    return () => {
+      clearInterval(interval);
+    };
+  }, [fetchData]);
+
+  const handleChartClick = useCallback(({ dataPointIndex }) => {
     if (chartRef.current) {
-      const annotationText = `Annotation ${annotations.length + 1}`;
+      const annotationText = `Annotation ${chartData.annotations.length + 1}`;
       const chart = chartRef.current.chart;
       const series = chart.w.globals.series[0];
       const dataItem = series[dataPointIndex];
 
-      const offsetY = -30 * annotations.length; // Calculate the vertical offset based on the number of existing annotations
+      const offsetY = -30 * chartData.annotations.length;
 
       const annotation = {
         x: dataItem.x,
@@ -276,46 +289,25 @@ function App() {
       };
 
       chart.addPointAnnotation(annotation);
-      setAnnotations([...annotations, annotation]);
+      setChartData((prevChartData) => ({
+        ...prevChartData,
+        annotations: [...prevChartData.annotations, annotation],
+      }));
     }
-  };
+  }, [chartData.annotations]);
 
-  const chartOptions = {
-    chart: {
-      type: 'candlestick',
-      height: 350,
-      events: {
-        click: handleChartClick,
-      },
-    },
-    series: [],
-    title: {
-      text: 'CandleStick Chart',
-      align: 'left',
-    },
-    xaxis: {
-      type: 'datetime',
-    },
-    yaxis: {
-      tooltip: {
-        enabled: true,
-      },
-    },
-    annotations: {
-      points: annotations,
-    },
-  };
+  const direction = chartData.prevPrice < chartData.price ? 'up' : chartData.prevPrice > chartData.price ? 'down' : '';
 
   return (
     <div>
       <div className="ticker">Sample Data</div>
-      <div className={['price', direction].join(' ')}>
-        ${price} {directionEmojis[direction]}
+      <div className={`price ${direction}`}>
+        ${chartData.price} {directionEmojis[direction]}
       </div>
-      <div className="price-time">{priceTime && priceTime.toLocaleTimeString()}</div>
+      <div className="price-time">{chartData.priceTime && chartData.priceTime.toLocaleTimeString()}</div>
       <Chart
         options={chartOptions}
-        series={series}
+        series={chartData.series}
         type="candlestick"
         width="100%"
         height={320}
@@ -323,6 +315,6 @@ function App() {
       />
     </div>
   );
-}
+};
 
 export default App;
