@@ -1,5 +1,5 @@
 import sqlite3, csv
-CSVFILE = "sample2.csv"
+CSVFILE = "sample.csv"
 DBFILE = "trading_data.db"
 
 conn = sqlite3.connect(DBFILE)

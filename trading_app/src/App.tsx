@@ -10,7 +10,7 @@
 
 // const directionEmojis = {
 //   up: '🚀',
-//   down: '💩',
+//   down: '🔻',
 //   '': '',
 // };
 
@@ -153,7 +153,7 @@ async function getStonks(): Promise<any> {
 
 const directionEmojis = {
   up: '🚀',
-  down: '💩',
+  down: '🔻',
   '': '',
 };
 

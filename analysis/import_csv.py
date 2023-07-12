@@ -40,7 +40,7 @@ for item in data:
   low = item['low']
   close = item['close']
   volume = item['volume']
-  cursor.execute("INSERT INTO `trading_1min` (`timestamp`, `gmtoffset`, `datetime`, `open`, `high`, `low`, `close`, `volume`) VALUES (?,?,?,?,?,?,?,?)", (timestamp, gmtoffset, datetime, open, high, low, close, volume))
+  cursor.execute("INSERT INTO `trading_data` (`timestamp`, `gmtoffset`, `datetime`, `open`, `high`, `low`, `close`, `volume`) VALUES (?,?,?,?,?,?,?,?)", (timestamp, gmtoffset, datetime, open, high, low, close, volume))
 
 # with open(CSVFILE) as demo:
 #   reader = csv.reader(demo)

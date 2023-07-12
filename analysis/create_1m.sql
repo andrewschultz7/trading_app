@@ -1,4 +1,4 @@
-CREATE TABLE `trading_1min` (
+CREATE TABLE `trading_data` (
   `Timestamp` INT,
   `gmtoffset` INT,
   `Datetime` DATETIME2,
@@ -7,4 +7,12 @@ CREATE TABLE `trading_1min` (
   `High` DECIMAL(10,2),
   `Low` DECIMAL(10,2),
   `Volume` INT
+);
+
+
+CREATE TABLE `three_barsignal` (
+  `Timestart` INT,
+  `Timeeend` INT,
+  `riskreward` INT,
+  `success` TEXT
 );
