@@ -3,7 +3,7 @@ import sqlite3
 import os
 
 DBFILE = "trading_data.db"
-SQLFILE = "create_1m.sql"
+SQLFILE = "create_trading_tables.sql"
 
 cur_dir = os.path.dirname(os.path.abspath(__file__))
 sql_file_path = os.path.join(cur_dir, SQLFILE)

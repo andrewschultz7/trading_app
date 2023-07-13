@@ -19,6 +19,10 @@ response = requests.get(url, headers=headers, params=querystring)
 
 # print(response.json())
 
+vwap = 0.0
+cumulative_volume = 0.0
+cumulative_traded_value = 0.0
+
 # CSVFILE = "sample2.csv"
 # DBFILE = db_file_path
 DBFILE = db_file
@@ -40,7 +44,16 @@ for item in data:
   low = item['low']
   close = item['close']
   volume = item['volume']
-  cursor.execute("INSERT INTO `trading_1min` (`timestamp`, `gmtoffset`, `datetime`, `open`, `high`, `low`, `close`, `volume`) VALUES (?,?,?,?,?,?,?,?)", (timestamp, gmtoffset, datetime, open, high, low, close, volume))
+
+  if '09:30:00' <= datetime.split(' ')[1] <= '16:00:00':
+    traded_value = close * volume
+    cumulative_traded_value += traded_value
+    cumulative_volume += volume
+    vwap = cumulative_traded_value/cumulative_volume
+  else:
+    vwap = close
+
+  cursor.execute("INSERT INTO `trading_data` (`timestamp`, `gmtoffset`, `datetime`, `open`, `high`, `low`, `close`, `volume`, `vwap`) VALUES (?,?,?,?,?,?,?,?,?)", (timestamp, gmtoffset, datetime, open, high, low, close, volume, vwap))
 
 # with open(CSVFILE) as demo:
 #   reader = csv.reader(demo)
