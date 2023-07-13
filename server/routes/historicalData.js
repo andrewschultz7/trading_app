@@ -27,7 +27,7 @@ router.get('/historical', async (req, res) => {
     const data = await HistoricalData.findAll();
 
     // Calculate the one-fourth index to split the data
-    const oneFourthIndex = Math.ceil(data.length / 2);
+    const oneFourthIndex = Math.ceil(data.length / 10);
 
     // Extract the first one-fourth of the data
     const oneFourthData = data.slice(0, oneFourthIndex);
