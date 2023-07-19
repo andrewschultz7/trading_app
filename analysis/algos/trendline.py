@@ -13,11 +13,20 @@ strat_success = 0
 def trendline(candles):
     global prev_high, prev_low, strat_implemented, strat_success, r_r
 
+    candle_count = 0
+    # determine if rising or falling
+    # calculate slope
+    # check if another candle follows trend
+    # if trend is true, continue until close on other side of trendline
+    # else restart trend search
+
     for i in range(len(candles)):
         first = candles[i]
         second = candles[i + 1]
 
-        if (first['High'] - second['High'])
+        # slope calculation of 45 degrees or less
+        if (first['High'] - second['High'])/candle_count <= 1:
+
 
 
 

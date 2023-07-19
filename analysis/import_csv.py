@@ -50,15 +50,64 @@ for item in data:
     cumulative_traded_value += traded_value
     cumulative_volume += volume
     vwap = cumulative_traded_value/cumulative_volume
+    ema009 = 0
+    ema021 = 0
+    ema200 = 0
   else:
     vwap = close
 
-  cursor.execute("INSERT INTO `trading_data` (`timestamp`, `gmtoffset`, `datetime`, `open`, `high`, `low`, `close`, `volume`, `vwap`) VALUES (?,?,?,?,?,?,?,?,?)", (timestamp, gmtoffset, datetime, open, high, low, close, volume, vwap))
+  cursor.execute(
+    """
+    INSERT INTO `trading_data`
+      (timestamp
+      , gmtoffset
+      , datetime
+      , open
+      , high
+      , low
+      , close
+      , volume
+      , vwap
+      , ema009
+      , ema021
+      , ema200)
+    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+    """
+    (
+      timestamp,
+      gmtoffset,
+      datetime,
+      open,
+      high,
+      low,
+      close,
+      volume,
+      vwap,
+      ema009,
+      ema021,
+      ema200,)
+  )
 
-# with open(CSVFILE) as demo:
-#   reader = csv.reader(demo)
-#   for row in reader:
-#     cursor.execute("INSERT INTO `trading_data` (`timestamp`, `gmtoffset`, `datetime`, `open`, `high`, `low`, `close`, `volume`) VALUES (?,?,?,?,?,?,?,?)", row)
+# for item in tf:
+#   def combine(array):
+#     candle = {}
+#     high = []
+#     low = []
+#     volume = 0
+
+#     for item in array:
+#         high.append(item['high'])
+#         low.append(item['low'])
+#         volume += item['volume']
+
+#     candle['datetime'] = array[0]['datetime']
+#     candle['open'] = array[0]['open']
+#     candle['high'] = max(high)
+#     candle['low'] = min(low)
+#     candle['close'] = array[-1]['close']
+#     candle['volume'] = volume
+
+#     return candle
 
 
 
