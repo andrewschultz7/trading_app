@@ -1,6 +1,7 @@
 import sqlite3, csv, os
 import json
 import requests
+import pandas as pd
 
 db_file = 'trading_data.db'
 # cur_dir = os.path.dirname(os.path.abspath(__file__))
@@ -23,6 +24,13 @@ vwap = 0.0
 cumulative_volume = 0.0
 cumulative_traded_value = 0.0
 
+def calculate_ema(data, window):
+  ema = []
+  smoothing_factor = 2 / (window + 1)
+  ema.append(data[0])
+
+  return ema[-1] if len(ema) > 0 else 0
+
 # CSVFILE = "sample2.csv"
 # DBFILE = db_file_path
 DBFILE = db_file
@@ -35,7 +43,7 @@ with open('response.json', 'w') as f:
 with open('response.json') as demo:
   data = json.load(demo)
 
-for item in data:
+for i, item in enumerate(data):
   timestamp = item['timestamp']
   gmtoffset = item['gmtoffset']
   datetime = item['datetime']
@@ -50,11 +58,15 @@ for item in data:
     cumulative_traded_value += traded_value
     cumulative_volume += volume
     vwap = cumulative_traded_value/cumulative_volume
+    close_values = [close for item in data[:i+1]]
+    ema009 = calculate_ema(close_values, 9)
+    ema021 = calculate_ema(close_values, 21)
+    ema200 = calculate_ema(close_values, 200)
+  else:
+    vwap = close
     ema009 = 0
     ema021 = 0
     ema200 = 0
-  else:
-    vwap = close
 
   cursor.execute(
     """
