@@ -21,6 +21,7 @@ response = requests.get(url, headers=headers, params=querystring)
 # print(response.json())
 
 vwap = 0.0
+vwapf = 0.0
 cumulative_volume = 0.0
 cumulative_traded_value = 0.0
 
@@ -53,17 +54,20 @@ for i, item in enumerate(data):
   close = item['close']
   volume = item['volume']
 
+  # need vwap for futures added
   if '09:30:00' <= datetime.split(' ')[1] <= '16:00:00':
     traded_value = close * volume
     cumulative_traded_value += traded_value
     cumulative_volume += volume
     vwap = cumulative_traded_value/cumulative_volume
+    vwapf = cumulative_traded_value/cumulative_volume # change here
     close_values = [close for item in data[:i+1]]
     ema009 = calculate_ema(close_values, 9)
     ema021 = calculate_ema(close_values, 21)
     ema200 = calculate_ema(close_values, 200)
   else:
     vwap = close
+    vwapf = close
     ema009 = 0
     ema021 = 0
     ema200 = 0
@@ -80,10 +84,11 @@ for i, item in enumerate(data):
       , close
       , volume
       , vwap
+      , vwapf
       , ema009
       , ema021
       , ema200)
-    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
     """
     (
       timestamp,
@@ -95,6 +100,7 @@ for i, item in enumerate(data):
       close,
       volume,
       vwap,
+      vwapf,
       ema009,
       ema021,
       ema200,)

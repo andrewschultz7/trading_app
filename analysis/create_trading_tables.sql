@@ -8,6 +8,7 @@ CREATE TABLE `trading_data` (
   `Low` DECIMAL(10,2),
   `Volume` INT,
   `vwap` DECIMAL(10,2),
+  `vwapf` DECIMAL(10,2),
   `ema009` DECIMAL(10,2),
   `ema021` DECIMAL(10,2),
   `ema200` DECIMAL(10,2)
