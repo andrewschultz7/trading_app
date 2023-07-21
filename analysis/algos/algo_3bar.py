@@ -1,4 +1,4 @@
-import sqlite3
+import sqlite3, json
 
 DBFILE = "trading_data.db"
 
@@ -12,6 +12,9 @@ strat_success = 0
 
 def three_bar(candles):
     global prev_high, prev_low, strat_implemented, strat_success, r_r
+
+    data_signal = []
+
 
     for i in range(2, len(candles)):
         current = candles[i]
@@ -38,14 +41,6 @@ def three_bar(candles):
             s1 <= f1 * candle2
 
         ):
-            print(
-                "Prev High ",
-                prev_high,
-                " Prev Low ",
-                prev_low,
-                " strat ",
-                current["datetime"],
-            )
 
             strat_implemented += 1
 
@@ -62,24 +57,30 @@ def three_bar(candles):
                 rr = 1
                 s = 'no'
                 cursor.execute("INSERT INTO `three_barsignal` (`Timestart`, `Timeeend`, `riskreward`, `success`) VALUES (?,?,?,?)", (f, l, rr, s))
-                print("loss at ", current["Low"], current["datetime"])
             elif (prev_high-entry)/(entry-sl) < r_r:
                 f = first['datetime']
                 l = current['datetime']
                 rr = 1
                 s = 'no rr'
                 cursor.execute("INSERT INTO `three_barsignal` (`Timestart`, `Timeeend`, `riskreward`, `success`) VALUES (?,?,?,?)", (f, l, rr, s))
-                print("Risk to reward not satisfied.  ", " high minus entry: ", prev_high-entry, " Entry minues sl: ", entry-sl, " Current r:r ", (prev_high-entry)/(entry-sl))
             elif current["High"] >= prev_high:
                 f = first['datetime']
                 l = current['datetime']
                 rr = 1
                 s = 'yes'
                 cursor.execute("INSERT INTO `three_barsignal` (`Timestart`, `Timeeend`, `riskreward`, `success`) VALUES (?,?,?,?)", (f, l, rr, s))
-                print("win at ", current["High"], " r to r ", (prev_high-entry)/(entry-sl), current["datetime"])
                 strat_success += 1
+                data_for_signal = {
+                    "Timestart": f,
+                    "Timeeend": l,
+                    "riskreward": rr,
+                    "success": s
+                }
+                data_signal.append(data_for_signal)
+    json_signal_data = json.dumps(data_signal)
     print("SSSSSSSSSS  Strategy success probability: ", strat_success/strat_implemented)
     conn.commit()
+    return json_signal_data
 
 conn = sqlite3.connect(DBFILE)
 cursor = conn.cursor()
