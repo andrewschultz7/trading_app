@@ -1,6 +1,9 @@
-import sqlite3, json
+import sqlite3, json, os
 
-DBFILE = "trading_data.db"
+current_directory = os.path.dirname(os.path.abspath(__file__))
+db_file_path = os.path.join(current_directory, "..", "trading_data.db")
+
+DBFILE = db_file_path
 
 candle2 = 0.5
 prev_high = 0
@@ -70,27 +73,29 @@ def three_bar(candles):
                 s = 'yes'
                 cursor.execute("INSERT INTO `three_barsignal` (`Timestart`, `Timeeend`, `riskreward`, `success`) VALUES (?,?,?,?)", (f, l, rr, s))
                 strat_success += 1
-                data_for_signal = {
-                    "Timestart": f,
-                    "Timeeend": l,
-                    "riskreward": rr,
-                    "success": s
-                }
-                data_signal.append(data_for_signal)
-    json_signal_data = json.dumps(data_signal)
+            data_for_signal = {
+                "Timestart": f,
+                "Timeeend": l,
+                "riskreward": rr,
+                "success": s
+            }
+            data_signal.append(data_for_signal)
+
+
     print("SSSSSSSSSS  Strategy success probability: ", strat_success/strat_implemented)
+
     conn.commit()
-    return json_signal_data
+
 
 conn = sqlite3.connect(DBFILE)
 cursor = conn.cursor()
 cursor.execute("SELECT DISTINCT Datetime, Open, High, Low, Close FROM trading_data")
 historical_data = []
 for row in cursor.fetchall():
-    datetime, open, high, low, close = row
+    datetime, open_p, high, low, close = row
     candle = {
         "datetime": datetime,
-        "Open": float(open),
+        "Open": float(open_p),
         "High": float(high),
         "Close": float(close),
         "Low": float(low),

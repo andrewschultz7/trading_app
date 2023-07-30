@@ -10,7 +10,7 @@ db_file = 'trading_data.db'
 url = "https://eod-historical-data.p.rapidapi.com/intraday/spy.us"
 
 querystring = {"interval":"1m","fmt":"json","from":"1677880341","to":"1688161941"}
-
+# querystring = {"interval":"5m","fmt":"json","from":"1690205400","to":"1690228800"}
 headers = {
 	"X-RapidAPI-Key": "4dc42ec080mshb6dfe849efda91dp19005djsne9933aa0ba36",
 	"X-RapidAPI-Host": "eod-historical-data.p.rapidapi.com"
@@ -18,7 +18,7 @@ headers = {
 
 response = requests.get(url, headers=headers, params=querystring)
 
-# print(response.json())
+print(response.json())
 
 vwap = 0.0
 vwapf = 0.0
@@ -105,6 +105,28 @@ for i, item in enumerate(data):
       ema021,
       ema200,)
   )
+
+  cursor.execute(
+      """
+      INSERT INTO `trading_data`
+        (kl)
+      VALUES (%s)
+      """
+      (
+        timestamp,
+        gmtoffset,
+        datetime,
+        open,
+        high,
+        low,
+        close,
+        volume,
+        vwap,
+        vwapf,
+        ema009,
+        ema021,
+        ema200,)
+    )
 
 # for item in tf:
 #   def combine(array):
