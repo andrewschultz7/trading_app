@@ -1,14 +1,12 @@
-import pandas
 import sqlite3
+
+import pandas
 
 DBFILE = "trading_data.db"
 
 day = day_of_signal
 
-params = {
-    'start_time': f'{day} 09:30:00',
-    'end_time': f'{day} 16:00:00'
-}
+params = {"start_time": f"{day} 09:30:00", "end_time": f"{day} 16:00:00"}
 
 query = """
     SELECT Close, Volume, Timestamp

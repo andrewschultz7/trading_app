@@ -1,0 +1,2 @@
+[flake8]
+exclude = trading_app,docs,api/migrations,api/tests

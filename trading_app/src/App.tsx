@@ -141,7 +141,7 @@
 
 // export default App;
 
-import { useEffect, useState, useRef, useMemo} from 'react';
+import { useEffect, useState, useRef, useCallback} from 'react';
 import './App.css';
 import Chart from 'react-apexcharts';
 
@@ -227,13 +227,13 @@ const App = () => {
 
   const fetchData = useCallback(async () => {
     try {
-      const stonksUrl = `http://localhost:8080/historical`;
+      const stonksUrl = `http://localhost:8000/historical/64`;
       const response = await fetch(stonksUrl);
       const data = await response.json();
 
       const prices = data.map((item) => ({
-        x: new Date(item.Datetime).getTime(),
-        y: [item.Open, item.High, item.Low, item.Close],
+        x: new Date(item.datetime).getTime(),
+        y: [item.open, item.high, item.low, item.close],
       }));
 
       const latestPrice = parseFloat(prices[prices.length - 1].y[3]);
