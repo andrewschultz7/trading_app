@@ -11,7 +11,8 @@ CREATE TABLE `trading_data` (
   `vwapf` DECIMAL(10,2),
   `ema009` DECIMAL(10,2),
   `ema021` DECIMAL(10,2),
-  `ema200` DECIMAL(10,2)
+  `ema200` DECIMAL(10,2),
+  `tl01` DECIMAL(10,2),
 );
 
 

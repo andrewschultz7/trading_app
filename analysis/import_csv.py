@@ -68,9 +68,10 @@ for i, item in enumerate(data):
   else:
     vwap = close
     vwapf = close
-    ema009 = 0
-    ema021 = 0
-    ema200 = 0
+    ema009 = 0.0
+    ema021 = 0.0
+    ema200 = 0.0
+    tl01 = 0.0
 
   cursor.execute(
     """
@@ -87,8 +88,9 @@ for i, item in enumerate(data):
       , vwapf
       , ema009
       , ema021
-      , ema200)
-    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+      , ema200,
+      tl01)
+    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
     """
     (
       timestamp,
@@ -103,7 +105,8 @@ for i, item in enumerate(data):
       vwapf,
       ema009,
       ema021,
-      ema200,)
+      ema200,
+      tl01,)
   )
 
   cursor.execute(
@@ -125,7 +128,8 @@ for i, item in enumerate(data):
         vwapf,
         ema009,
         ema021,
-        ema200,)
+        ema200,
+        tl01,)
     )
 
 # for item in tf:
