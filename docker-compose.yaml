@@ -1,0 +1,55 @@
+volumes:
+  pg_trading_data:
+    external: true
+  pg-admin_trading_data:
+    external: true
+services:
+  trading_app:
+    image: node:lts-bullseye
+    command: /bin/bash run.sh
+    working_dir: /app
+    volumes:
+      - ./trading_app:/app
+    ports:
+      - "3000:3000"
+    environment:
+      HOST_OS: ${OS}
+      NODE_ENV: development
+      HOST: "0.0.0.0"
+      PORT_CONFIG: 3000
+      PUBLIC_URL: http://localhost:3000
+      TRADING_APP_API: http://localhost:8000
+  postgres:
+    build:
+      context: ./db
+      dockerfile: ./Dockerfile.dev
+    volumes:
+      - pg_trading_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_MULTIPLE_DATABASES=trading_app
+      - POSTGRES_PASSWORD=test-databases
+    ports:
+      - 15432:5432
+  pg-admin_trading_data:
+    image: dpage/pgadmin4
+    volumes:
+      - pg-admin_trading_data:/var/lib/pgadmin
+    ports:
+      - 8082:80
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@tradingappadmin.com
+      PGADMIN_DEFAULT_PASSWORD: tradingappadmin
+      PGADMIN_DISABLE_POSTFIX: 1
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile.dev
+    ports:
+      - 8000:8000
+    volumes:
+      - ./api:/app
+    environment:
+      SIGNING_KEY: ${SIGNING_KEY}
+      DATABASE_URL: postgresql://trading_app:password@postgres/trading_app
+      WAIT_HOSTS: postgres:5432
+      PORT: 8000

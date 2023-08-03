@@ -1,6 +1,6 @@
 import csv
-import sqlite3
 import os
+import sqlite3
 
 DBFILE = "trading_data.db"
 SQLFILE = "create_trading_tables.sql"

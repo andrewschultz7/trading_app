@@ -36,7 +36,6 @@ def three_bar(candles):
             and
             # criteria of second candle vs first
             s1 <= f1 * candle2
-
         ):
             print(
                 "Prev High ",
@@ -49,26 +48,49 @@ def three_bar(candles):
 
             strat_implemented += 1
 
-            j = i+1
-            entry = second["Open"]  + .25
+            j = i + 1
+            entry = second["Open"] + 0.25
             current = candles[j]
-            while current["Low"] > sl and current["High"] < prev_high and j<=len(candles)-1:
+            while (
+                current["Low"] > sl
+                and current["High"] < prev_high
+                and j <= len(candles) - 1
+            ):
                 current = candles[j]
                 j += 1
 
             if current["Low"] <= sl:
                 print("loss at ", current["Low"], current["datetime"])
-            elif (prev_high-entry)/(entry-sl) < r_r:
-                print("Risk to reward not satisfied.  ", " high minus entry: ", prev_high-entry, " Entry minues sl: ", entry-sl, " Current r:r ", (prev_high-entry)/(entry-sl))
+            elif (prev_high - entry) / (entry - sl) < r_r:
+                print(
+                    "Risk to reward not satisfied.  ",
+                    " high minus entry: ",
+                    prev_high - entry,
+                    " Entry minues sl: ",
+                    entry - sl,
+                    " Current r:r ",
+                    (prev_high - entry) / (entry - sl),
+                )
             elif current["High"] >= prev_high:
-                print("win at ", current["High"], " r to r ", (prev_high-entry)/(entry-sl), current["datetime"])
+                print(
+                    "win at ",
+                    current["High"],
+                    " r to r ",
+                    (prev_high - entry) / (entry - sl),
+                    current["datetime"],
+                )
                 strat_success += 1
-    print("SSSSSSSSSS  Strategy success probability: ", strat_success/strat_implemented)
+    print(
+        "SSSSSSSSSS  Strategy success probability: ",
+        strat_success / strat_implemented,
+    )
 
 
 conn = sqlite3.connect(DBFILE)
 cursor = conn.cursor()
-cursor.execute("SELECT DISTINCT Datetime, Open, High, Low, Close FROM trading_5min")
+cursor.execute(
+    "SELECT DISTINCT Datetime, Open, High, Low, Close FROM trading_5min"
+)
 historical_data = []
 for row in cursor.fetchall():
     datetime, open, high, low, close = row

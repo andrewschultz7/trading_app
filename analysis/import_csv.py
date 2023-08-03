@@ -1,9 +1,12 @@
-import sqlite3, csv, os
+import csv
 import json
+import os
+import sqlite3
+
 import requests
 import pandas as pd
 
-db_file = 'trading_data.db'
+db_file = "trading_data.db"
 # cur_dir = os.path.dirname(os.path.abspath(__file__))
 # db_file_path = os.path.join(cur_dir, db_file)
 
@@ -12,8 +15,8 @@ url = "https://eod-historical-data.p.rapidapi.com/intraday/spy.us"
 querystring = {"interval":"1m","fmt":"json","from":"1677880341","to":"1688161941"}
 # querystring = {"interval":"5m","fmt":"json","from":"1690205400","to":"1690228800"}
 headers = {
-	"X-RapidAPI-Key": "4dc42ec080mshb6dfe849efda91dp19005djsne9933aa0ba36",
-	"X-RapidAPI-Host": "eod-historical-data.p.rapidapi.com"
+    "X-RapidAPI-Key": "4dc42ec080mshb6dfe849efda91dp19005djsne9933aa0ba36",
+    "X-RapidAPI-Host": "eod-historical-data.p.rapidapi.com",
 }
 
 response = requests.get(url, headers=headers, params=querystring)
@@ -39,10 +42,10 @@ DBFILE = db_file
 conn = sqlite3.connect(DBFILE)
 cursor = conn.cursor()
 
-with open('response.json', 'w') as f:
-  f.write(response.text)
-with open('response.json') as demo:
-  data = json.load(demo)
+with open("response.json", "w") as f:
+    f.write(response.text)
+with open("response.json") as demo:
+    data = json.load(demo)
 
 for i, item in enumerate(data):
   timestamp = item['timestamp']
@@ -152,8 +155,6 @@ for i, item in enumerate(data):
 #     candle['volume'] = volume
 
 #     return candle
-
-
 
 conn.commit()
 conn.close()
