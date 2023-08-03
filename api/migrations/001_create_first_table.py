@@ -15,7 +15,13 @@ steps = [
         close DECIMAL(10,2),
         high DECIMAL(10,2),
         low DECIMAL(10,2),
-        volume INT
+        volume INT,
+        vwap DECIMAL(10,2),
+        vwapf DECIMAL(10,2),
+        ema009 DECIMAL(10,2),
+        ema021 DECIMAL(10,2),
+        ema200 DECIMAL(10,2),
+        tl01 DECIMAL(10,2)
         );
 
         """,
@@ -25,7 +31,20 @@ steps = [
         """,
     ],
     [
-        f"INSERT INTO trading_data (datetime, open, close, high, low, volume) "
+        f"INSERT INTO trading_data (
+        datetime, 
+        open, 
+        close, 
+        high, 
+        low, 
+        volume,
+        vwap,
+        vwapf,
+        ema009,
+        ema021,
+        ema200,
+        tl01
+        ) "
         f"VALUES "
         f"{import_csv('sample.csv')}"
         f";",
