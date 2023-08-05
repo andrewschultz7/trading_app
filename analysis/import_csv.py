@@ -18,7 +18,7 @@ headers = {
 
 response = requests.get(url, headers=headers, params=querystring)
 
-print(response.json())
+# print(response.json())
 
 vwap = 0.0
 vwapf = 0.0
@@ -91,7 +91,7 @@ for i, item in enumerate(data):
       , ema200,
       tl01)
     VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-    """
+    """,
     (
       timestamp,
       gmtoffset,

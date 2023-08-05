@@ -12,7 +12,7 @@ CREATE TABLE `trading_data` (
   `ema009` DECIMAL(10,2),
   `ema021` DECIMAL(10,2),
   `ema200` DECIMAL(10,2),
-  `tl01` DECIMAL(10,2),
+  `tl01` DECIMAL(10,2)
 );
 
 
