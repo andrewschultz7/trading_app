@@ -19,6 +19,7 @@ headers = {
     "X-RapidAPI-Host": "eod-historical-data.p.rapidapi.com",
 }
 
+
 response = requests.get(url, headers=headers, params=querystring)
 
 print(response.json())

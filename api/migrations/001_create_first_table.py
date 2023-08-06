@@ -10,6 +10,7 @@ steps = [
         # "Up" SQL statement
         """
         CREATE TABLE trading_data (
+        timestamp BIGINT,
         datetime TIMESTAMP,
         open DECIMAL(10,2),
         close DECIMAL(10,2),
@@ -23,7 +24,6 @@ steps = [
         ema200 DECIMAL(10,2),
         tl01 DECIMAL(10,2)
         );
-
         """,
         # "Down" SQL statement
         """
@@ -31,25 +31,18 @@ steps = [
         """,
     ],
     [
-        f"INSERT INTO trading_data (
-        datetime, 
-        open, 
-        close, 
-        high, 
-        low, 
-        volume,
-        vwap,
-        vwapf,
-        ema009,
-        ema021,
-        ema200,
-        tl01
-        ) "
-        f"VALUES "
-        f"{import_csv('sample.csv')}"
-        f";",
+        # "Up" SQL statement
         """
-        DROP TABLE trading_data;
+        CREATE TABLE strategy_signal (
+        timestart INT,
+        timeeend INT,
+        riskreward INT,
+        success TEXT
+        );
+        """,
+        # "Down" SQL statement
+        """
+        DROP TABLE strategy_signal;
         """,
     ],
 ]
