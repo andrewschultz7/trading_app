@@ -1,6 +1,5 @@
 CREATE TABLE `trading_data` (
   `Timestamp` INT,
-  `gmtoffset` INT,
   `Datetime` DATETIME2,
   `Open` DECIMAL(10,2),
   `Close` DECIMAL(10,2),
