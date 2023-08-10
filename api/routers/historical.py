@@ -34,7 +34,9 @@ def get_threebarsignal_data(repo: ThreeBarSignalRepository = Depends()):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Unable to retrieve test threebarsignal data.",
         )
-    return threebarsignal_data
+    message = {}
+    message['detail'] = "test"
+    return message
 
 @router.get(
     "/historical/{fraction}",
