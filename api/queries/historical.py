@@ -128,12 +128,6 @@ class HistoricalDataRepository:
                 "detail": "There was a problem interacting with the database."
             }
 
-    def calculate_ema(self, data, window):
-        ema = []
-        smoothing_factor = 2 / (window + 1)
-        ema.append(data[0])
-
-        return ema[-1] if len(ema) > 0 else 0
 
     def get_fraction_historical_data(
         self, fraction: int = 1
