@@ -3,13 +3,14 @@ import os
 import requests
 import pandas as pd
 
-# from sqlalchemy import create_engine
 from alpha_vantage.timeseries import TimeSeries
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from queries.historical import (
     HistoricalDataPoint,
+    ThreeBarSignal,
     HistoricalDataRepository,
+    ThreeBarSignalRepository,
     HttpError,
     SystemMessage,
 )
@@ -24,10 +25,16 @@ def get_updated_data(repo: HistoricalDataRepository = Depends()):
     data, _ = ts.get_intraday('QQQ', interval='5min', outputsize='full')
     return repo.update_historical_data(data)
 
-
-
-
-
+@router.get("/threebarsignal", response_model=SystemMessage)
+def get_threebarsignal_data(repo: ThreeBarSignalRepository = Depends()):
+    try:
+        threebarsignal_data = repo.data_to_three_bar()
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Unable to retrieve test threebarsignal data.",
+        )
+    return threebarsignal_data
 
 @router.get(
     "/historical/{fraction}",

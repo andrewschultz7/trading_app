@@ -34,8 +34,8 @@ steps = [
         # "Up" SQL statement
         """
         CREATE TABLE strategy_signal (
-        timestart INT,
-        timeeend INT,
+        timestart TIMESTAMP,
+        timeeend TIMESTAMP,
         riskreward INT,
         success TEXT
         );
@@ -46,3 +46,5 @@ steps = [
         """,
     ],
 ]
+# pg-admin_trading_data
+# pg_trading_data
