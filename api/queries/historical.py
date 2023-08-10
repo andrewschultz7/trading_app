@@ -1,3 +1,7 @@
+import pandas as pd
+# from sqlalchemy import create_engine
+from alpha_vantage.timeseries import TimeSeries
+
 from datetime import datetime
 from typing import List, Union
 
@@ -29,97 +33,32 @@ class HistoricalDataPoint(BaseModel):
     tl01: float
 
 class HistoricalDataRepository:
-    def update_historical_data(self, data: list):
-        res = []
+    def update_historical_data(self, data):
+        def calculate_indicators(data):
+            data['vwap'] = (data['1. open'] + data['2. high'] + data['3. low'] + data['4. close']) / 4
+            data['ema009'] = data['4. close'].ewm(span=9, adjust=False).mean()
+            data['ema021'] = data['4. close'].ewm(span=21, adjust=False).mean()
+            data['ema200'] = data['4. close'].ewm(span=200, adjust=False).mean()
+            return data
 
-        # Initialize
-        vwap = 0.0
-        vwapf = 0.0
-        cumulative_volume = 0.0
-        cumulative_traded_value = 0.0
-
-        for i, data_point in enumerate(data):
-            timestamp = data_point["timestamp"]
-            # gmtoffset = data_point["gmtoffset"]
-            datetime = data_point["datetime"]
-            open = data_point["open"]
-            high = data_point["high"]
-            low = data_point["low"]
-            close = data_point["close"]
-            volume = data_point["volume"]
-
-            # need vwap for futures added
-            if "09:30:00" <= datetime.split(" ")[1] <= "16:00:00":
-                traded_value = close * volume
-                cumulative_traded_value += traded_value
-                cumulative_volume += volume
-                vwap = cumulative_traded_value / cumulative_volume
-                vwapf = cumulative_traded_value / cumulative_volume
-                close_values = [close for data_point in data[: i + 1]]
-                ema009 = self.calculate_ema(close_values, 9)
-                ema021 = self.calculate_ema(close_values, 21)
-                ema200 = self.calculate_ema(close_values, 200)
-            else:
-                vwap = 0.0
-                vwapf = 0.0
-                cumulative_volume = 0.0
-                cumulative_traded_value = 0.0
-                ema009 = 0.0
-                ema021 = 0.0
-                ema200 = 0.0
-                tl01 = 0.0
-
-            data_point_temp = [
-                timestamp,
-                datetime,
-                open,
-                high,
-                low,
-                close,
-                volume,
-                vwap,
-                vwapf,
-                ema009,
-                ema021,
-                ema200,
-                tl01,
-            ]
-
-            stringified = ", ".join(
-                list(map(lambda x: f"'{x}'", data_point_temp))
-            )
-            res.append(f"({stringified})")
+        data = calculate_indicators(data)
 
         try:
             with pool.connection() as conn:
                 with conn.cursor() as db:
-                    result = db.execute(
-                        f"""
-                        INSERT INTO trading_data (
-                        timestamp,
-                        datetime,
-                        open,
-                        close,
-                        high,
-                        low,
-                        volume,
-                        vwap,
-                        vwapf,
-                        ema009,
-                        ema021,
-                        ema200,
-                        tl01
+                    for date, row in data.iterrows():
+                        insert_query = """
+                            INSERT INTO trading_data (timestamp, datetime, open, high, low, close, volume, vwap, ema009, ema021, ema200)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        """
+                        values = [
+                            date.timestamp(), date.to_pydatetime(), row['1. open'], row['2. high'], row['3. low'], row['4. close'],
+                            row['5. volume'], row['vwap'], row['ema009'], row['ema021'], row['ema200']
+                        ]
+                        db.execute(
+                            insert_query, values
                         )
-                        VALUES
-                        {",".join(res)};
-                        """,
-                    )
-                    # response = [
-                    #     self.record_to_datapoint_out(record)
-                    #     for record in result
-                    # ]
 
-                    # return response[:fraction_response]
                     return {"detail": "Historical data updated."}
 
         except Exception as e:
