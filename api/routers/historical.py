@@ -8,6 +8,7 @@ from alpha_vantage.timeseries import TimeSeries
 from fastapi import APIRouter, Depends, HTTPException, status
 from queries.historical import (
     HistoricalDataPoint,
+    SignalService,
     ThreeBarSignal,
     HistoricalDataRepository,
     ThreeBarSignalRepository,
@@ -17,6 +18,22 @@ from queries.historical import (
 
 router = APIRouter()
 
+@router.get("/signal", response_model=SystemMessage)
+async def signal_data_to_output(signal_data: dict):
+    signal_service = SignalService()
+    first_threebar, last_threebar, rr_threebar, suc_threebar = signal_service.use_threebar(signal_data)
+    first_trendline, last_trendline, rr_trendline, suc_trendline = signal_service.use_trendline(signal_data)
+
+    signal_service.record_to_strategy_signal(
+        first_threebar,
+        last_threebar,
+        rr_threebar,
+        suc_threebar,
+        first_trendline,
+        last_trendline,
+        rr_trendline,
+        suc_trendline
+        )
 
 @router.get("/update_data", response_model=SystemMessage)
 def get_updated_data(repo: HistoricalDataRepository = Depends()):

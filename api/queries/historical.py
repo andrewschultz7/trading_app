@@ -33,12 +33,30 @@ class HistoricalDataPoint(BaseModel):
     ema200: float
     tl01: float
 
+
 class ThreeBarSignal(BaseModel):
     timestart: int
     timeend: int
     riskreward: int
     success: str
 
+class TrendlineSignal(BaseModel):
+    timestart: int
+    timeend: int
+    riskreward: int
+    success: str
+
+class StrategySignal(BaseModel):
+    timestart: int
+    timeend: int
+    riskreward: int
+    success: str
+"""
+level function
+upon close, if candle high two candles back is higher than current candle close
+    run query to find prior daily occurences
+
+ """
 class HistoricalDataRepository:
     def update_historical_data(self, data):
         def calculate_indicators(data):
@@ -124,6 +142,51 @@ class HistoricalDataRepository:
             tl01=record[12],
         )
 
+class SignalService:
+    def __init__(self):
+        self.threebar_repo = ThreeBarSignalRepository()
+        self.trendline_repo = TrendlineSignalRepository()
+
+    def use_threebar(self, data):
+        return self.threebar_repo.use_threebar(data)
+
+    def use_trendline(self, data):
+        return self.trendline_repo.use_trendline(data)
+
+    def record_to_strategy_signal(
+            self,
+            first_threebar,
+            last_threebar,
+            rr_threebar,
+            suc_threebar,
+            first_trendline,
+            last_trendline,
+            rr_trendline,
+            suc_trendline
+            ):
+        first, last, rr, success = (
+            min(first_threebar, first_trendline),
+            max(last_threebar, last_trendline),
+            100,
+            "yes"
+        )
+        try:
+            with pool.connection() as conn:
+                with conn.cursor() as db:
+                    result = db.execute(
+                        """
+                        INSERT INTO strategy_signal (Timestart, Timeend,
+                        riskreward, success)
+                        VALUES (%s, %s, %s, %s)
+                        """,
+                        [first, last, rr, success]
+                    )
+        except Exception as e:
+            print(e)
+            return {
+                "detail": "There was a problem writing QUERIES.strategy_signal to db"
+            }
+
 class ThreeBarSignalRepository:
     def pause_for_user(self):
         user_choice = input("Do you want to continue? (y/n): ")
@@ -202,14 +265,6 @@ class ThreeBarSignalRepository:
                 # criteria of second candle vs first
                 s1 <= f1 * candle2
             ):
-                # print(
-                #     "Prev High ",
-                #     prev_high,
-                #     " Prev Low ",
-                #     prev_low,
-                #     " strat ",
-                #     current["datetime"],
-                # )
 
                 strat_implemented += 1
 
@@ -256,7 +311,7 @@ class ThreeBarSignalRepository:
             "SSSSSSSSSS  Strategy success probability: ",
             success_probability
         )
-        return success_probability
+        return f, l, success_probability, s
 
     def record_to_signal_table(self, f, l, rr, s):
         try:
@@ -283,3 +338,143 @@ class ThreeBarSignalRepository:
             riskreward=record[2],
             success=record[3]
         )
+
+class TrendlineSignalRepository:
+    def data_to_trendline(self) -> List[TrendlineSignal]:
+        try:
+            with pool.connection() as conn:
+                with conn.cursor() as db:
+                    result = (
+                        """
+                        SELECT Datetimme, Open, High, Low, Close
+                        FROM trading_data
+                        ORDER BY Datetime ASC
+                        """
+                    )
+                    rows = result.fetchall()
+                    historical_data = []
+                    for row in rows:
+                        datetime, open, high, low, close = row
+                        candle = {
+                            "datetime": datetime,
+                            "Open": float(open),
+                            "High": float(high),
+                            "Close": float(close),
+                            "Low": float(low),
+                        }
+                        historical_data.append(candle)
+                    return self.trendline(historical_data)
+        except Exception as e:
+            print(e)
+            return {
+                 "detail": "There was a problem reading QUERIES.data_to_trendline from trading_data db."
+            }
+
+    def trendline(self, candles):
+        stop_loss = candles[1]["Low"]
+        take_profit = 0.0
+        global i
+        i = 0
+        slope1 = 0.0
+        slope2 = 0.0
+        candle_count = 0
+
+        while i <= len(candles)-1:
+            def expected_trend(candles, price, operand, j):
+                global i
+                initial_candle = candles[j-2][price]
+                next_candle = candles[j-1][price]
+                signal_finished = False
+                percent_slope = percent_slope2 = (
+                    ((next_candle - initial_candle) /
+                    initial_candle) * 100
+                )
+                expected_last_candle = next_candle + percent_slope
+                count = 0
+
+                while (
+                    (j <= len(candles) - 1 and
+                    count < 11) or
+                    signal_finished == False
+                ):
+                    last_candle = candles[j][price]
+                    last_candle_close = candles[i]["Close"]
+
+                    if eval(f"{last_candle_close} {operand} {expected_last_candle}"):
+                        signal_finished = True
+                        return candles[i-2]["Datetime"], candles[j]["Datetime"], 100, "Yes"
+                    if last_candle == expected_last_candle:
+                        j += 1
+                    else:
+                        expected_last_candle = (
+                            ((last_candle - initial_candle) / initial_candle) * 100 +
+                            percent_slope2
+                        )
+                        j += 1
+                    count += 1
+                i = i + count
+
+            if candles[i-2]["High"] >= candles[i-1]["High"]:
+                price = "High"
+                operand = ">"
+                first, last, rr, success = expected_trend(candles, price, operand, i)
+
+            elif candles[i-2]["Low"] <= candles[i-1]["Low"]:
+                price = "Low"
+                operand = "<"
+                first, last, rr, success = expected_trend(candles, price, operand, i)
+
+            return first, last, rr, success
+
+
+
+
+
+            # if initial_candle["High"] >= next_candle["High"]:
+            #     self.slope_1_to_2 = (candle_count + 1) (next_candle["High"]/initial_candle["High"])
+            #     expected_last_candle = next_candle["High"] * self.slope_1_to_2
+            #     self.stop_loss = next_candle["Low"]
+
+            # if (initial_candle["High"] >= last_candle["High"] and
+            #     last_candle["Close"] > expected_last_candle
+            # ):
+            #     self.stop_loss = next_candle["Low"]
+            #     return "find_exit_lvl"
+
+            # elif (
+            #     initial_candle["High"] >= last_candle["High"] and
+            #     last_candle["Close"] <= expected_last_candle and
+            #     last_candle["Open"] <= expected_last_candle
+            # ):
+            #     self.slope_1_to_3 = (candle_count + 2) / (initial_candle["High"]-last_candle["High"])
+
+            # elif (
+            #     last_candle["Open"] >= expected_last_candle and
+            #     last_candle["Close"] > last_candle["Open"] and
+            #     (
+            #         (last_candle["High"]-last_candle["Close"])/
+            #         (last_candle["High"]-last_candle["Low"])
+            #     ) <= .25
+            # ):
+
+
+
+            # if initial_candle["High"] >= next_candle["High"]:
+            #     slope1 = (initial_candle["High"]-next_candle["High"])/candle_count
+            #     expected_last_candle =
+            #     #descending
+            # elif initial_candle["Low"] <= next_candle["Low"]:
+            #     slope1 = (next_candle["Low"]-initial_candle["Low"])/candle_count
+            #     #ascending
+
+            # #confirm slope with third candle
+            # if initial_candle["High"] >= last_candle["High"]:
+            #     slope2 = (initial_candle["High"]-last_candle["High"])/candle_count
+            #     if slope1 == slope2:
+            #         trend = "ascending"
+            # elif initial_candle["Low"] <= last_candle["Low"]:
+            #     slope2 = (last_candle["Low"]-initial_candle["Low"])/candle_count
+            #     if slope1 == slope2:
+            #         trend = "descending"
+            # else:
+            #     trend = "no_trend"
