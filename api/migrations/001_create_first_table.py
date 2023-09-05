@@ -34,8 +34,10 @@ steps = [
         # "Up" SQL statement
         """
         CREATE TABLE strategy_signal (
+        prebuffer TIMESTAMP,
         timestart TIMESTAMP,
         timeeend TIMESTAMP,
+        postbuffer TIMESTAMP,
         riskreward INT,
         success TEXT
         );

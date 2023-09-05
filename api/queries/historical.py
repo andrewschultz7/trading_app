@@ -3,7 +3,7 @@ import pandas as pd
 # from sqlalchemy import create_engine
 from alpha_vantage.timeseries import TimeSeries
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Union
 
 from pydantic import BaseModel
@@ -153,6 +153,33 @@ class SignalService:
     def use_trendline(self, data):
         return self.trendline_repo.use_trendline(data)
 
+    # def signal_to_frontend(
+#     self, fraction: int = 1
+# ) -> Union[HttpError, List[HistoricalDataPoint]]:
+#     try:
+#         with pool.connection() as conn:
+#             with conn.cursor() as db:
+#                 result = db.execute(
+#                     """
+#                     SELECT *
+#                     FROM trading_data as td
+#                     WHERE ;
+#                     """,
+#                 )
+#                 response = [
+#                     self.record_to_datapoint_out(record)
+#                     for record in result
+#                 ]
+#                 fraction_response = len(response) // fraction
+#                 print(len(response[:fraction_response]))
+#                 return response[:fraction_response]
+
+#     except Exception as e:
+#         print(e)
+#         return {
+#             "detail": "There was a problem interacting with the database."
+#         }
+
     def record_to_strategy_signal(
             self,
             first_threebar,
@@ -280,27 +307,27 @@ class ThreeBarSignalRepository:
                     j += 1
 
                 if current["Low"] <= sl:
-                    f = first["datetime"]
-                    l = current["datetime"]
+                    first_candle = first["datetime"]
+                    last_candle = current["datetime"]
                     rr = 1
-                    s = "no"
-                    self.record_to_signal_table(f, l, rr, s)
+                    stat_success = "no"
+                    self.record_to_signal_table(first_candle, last_candle, rr, stat_success)
                     i += 3
 
                 elif (prev_high - entry) / (entry - sl) < r_r:
-                    f = first["datetime"]
-                    l = current["datetime"]
+                    first_candle = first["datetime"]
+                    last_candle = current["datetime"]
                     rr = 1
-                    s = "no rr"
-                    self.record_to_signal_table(f, l, rr, s)
+                    stat_success = "no rr"
+                    self.record_to_signal_table(first_candle, last_candle, rr, stat_success)
                     i += 3
 
                 elif current["High"] >= prev_high:
-                    f = first["datetime"]
-                    l = current["datetime"]
+                    first_candle = first["datetime"]
+                    last_candle = current["datetime"]
                     rr = 1
-                    s = "yes"
-                    self.record_to_signal_table(f, l, rr, s)
+                    stat_success = "yes"
+                    self.record_to_signal_table(first_candle, last_candle, rr, stat_success)
                     strat_success += 1
                     i += 3
             else:
@@ -311,18 +338,22 @@ class ThreeBarSignalRepository:
             "SSSSSSSSSS  Strategy success probability: ",
             success_probability
         )
-        return f, l, success_probability, s
+        return first_candle, last_candle, success_probability, stat_success
 
-    def record_to_signal_table(self, f, l, rr, s):
+    def record_to_signal_table(self, first_candle, last_candle, rr, stat_success):
+        timeframe = 5
+        pre_buffer = first_candle - timedelta(minutes=timeframe*10)
+        post_buffer = last_candle + timedelta(minutes=timeframe*10)
+        print("PPPPPPPPPP buffer ", pre_buffer, first_candle, post_buffer, last_candle)
         try:
             with pool.connection() as conn:
                 with conn.cursor() as db:
                     result = db.execute(
                         """
-                        INSERT INTO strategy_signal (Timestart, Timeeend, riskreward, success)
-                        VALUES (%s, %s, %s, %s)
+                        INSERT INTO strategy_signal (prebuffer, Timestart, Timeeend, postbuffer, riskreward, success)
+                        VALUES (%s, %s, %s, %s, %s, %s)
                         """,
-                        [f, l, rr, s]
+                        [pre_buffer, first_candle, last_candle, post_buffer, rr, stat_success]
                     )
 
         except Exception as e:
