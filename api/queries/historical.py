@@ -135,11 +135,11 @@ class HistoricalDataRepository:
             low=record[5],
             volume=record[6],
             vwap=record[7],
-            vwapf=record[8],
+            vwapf=record[8] or 0,
             ema009=record[9],
             ema021=record[10],
             ema200=record[11],
-            tl01=record[12],
+            tl01=record[12] or 0,
         )
 
 class SignalService:
