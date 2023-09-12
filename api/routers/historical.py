@@ -44,6 +44,7 @@ def get_updated_data(repo: HistoricalDataRepository = Depends()):
 
 @router.get("/threebarsignal", response_model=SystemMessage)
 def get_threebarsignal_data(repo: ThreeBarSignalRepository = Depends()):
+    print("THREE BAR SIGNAL")
     try:
         threebarsignal_data = repo.data_to_three_bar()
     except Exception:

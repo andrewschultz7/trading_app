@@ -1,9 +1,10 @@
 import sys, time
+import simplejson as json
 import pandas as pd
 # from sqlalchemy import create_engine
 from alpha_vantage.timeseries import TimeSeries
 
-from datetime import datetime, timedelta
+from datetime import datetime as dt, timedelta
 from typing import List, Union
 
 from pydantic import BaseModel
@@ -51,6 +52,13 @@ class StrategySignal(BaseModel):
     timeend: int
     riskreward: int
     success: str
+
+class DateTimeEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, dt):
+            return obj.isoformat()
+        return super().default(obj)
+
 """
 level function
 upon close, if candle high two candles back is higher than current candle close
@@ -83,7 +91,7 @@ class HistoricalDataRepository:
                         db.execute(
                             insert_query, values
                         )
-
+                    print("detail Historical data updated.")
                     return {"detail": "Historical data updated."}
 
         except Exception as e:
@@ -224,10 +232,16 @@ class ThreeBarSignalRepository:
         else:
             pass
 
+
     def data_to_three_bar(self) -> List[ThreeBarSignal]:
         try:
             with pool.connection() as conn:
                 with conn.cursor() as db:
+                    db.execute(
+                        """
+                        DELETE FROM strategy_signal
+                        """
+                    )
                     result = db.execute(
                         """
                         SELECT Datetime, Open, High, Low, Close
@@ -259,19 +273,18 @@ class ThreeBarSignalRepository:
         candle2 = 0.5
         prev_high = 0
         prev_low = 0
-        r_r = 2
+        risk_to_reward = 2
         strat_implemented = 0
         strat_success = 0
         i = 2
-        # global prev_high, prev_low, strat_implemented, strat_success, r_r
+        price_increment = .25 # increment for ES futures index
+        # global prev_high, prev_low, strat_implemented, strat_success, risk_to_reward
 
         while i <= len(candles)-1:
             current = candles[i]
             second = candles[i - 1]
             first = candles[i - 2]
 
-            if i <150:
-                print(f"{i} First {first['datetime']} Second {current['datetime']}")
 
             if first["High"] > float(prev_high):
                 prev_high = first["High"]
@@ -280,54 +293,63 @@ class ThreeBarSignalRepository:
             elif first["Low"] < prev_low:
                 prev_low = first["Low"]
 
-            f1 = first["Close"] - first["Low"]
-            s1 = second["Open"] - second["Low"]
-            sl = second["Low"]
+            # calculating risk to reward based on candle size
+            first_candle_height = first["Close"] - first["Low"]
+            second_candle_height = second["Open"] - second["Low"]
+            stop_loss = second["Low"]
 
+            # actual algo here to check if pattern is correct
             if (
                 current["Open"] < current["Close"]
                 and second["Open"] > second["Close"]
                 and first["Open"] < first["Close"]
                 and
                 # criteria of second candle vs first
-                s1 <= f1 * candle2
+                second_candle_height <= first_candle_height * candle2
             ):
-
                 strat_implemented += 1
-
                 j = i + 1
-                entry = second["Open"] + 0.25
-                current = candles[j]
+
+                # price increment above pattern where we would like to enter a trade
+                entry = second["Open"] + price_increment
+
+                # using next candle to check for exit
+                entry_candle = candles[j]
+
+                # run loop until either stop loss or prev high is equal to current candle price
                 while (
-                    current["Low"] > sl
-                    and current["High"] < prev_high
-                    and j <= len(candles) - 1
+                    entry_candle["Low"] > stop_loss
+                    and entry_candle["High"] < prev_high
+                    and j <= len(candles)
                 ):
-                    current = candles[j]
                     j += 1
+                    entry_candle = candles[j]
 
-                if current["Low"] <= sl:
+                # pattern failed to work out
+                if entry_candle["Low"] <= stop_loss:
+                    first_candle = first["datetime"]
+                    last_candle = entry_candle["datetime"]
+                    rr = 1
+                    success_msg = "no"
+                    self.record_to_signal_table(first_candle, last_candle, rr, success_msg)
+                    i += j
+
+                # pattern worked but risk to reward not enough
+                elif (prev_high - entry) / (entry - stop_loss) < risk_to_reward:
                     first_candle = first["datetime"]
                     last_candle = current["datetime"]
                     rr = 1
-                    stat_success = "no"
-                    self.record_to_signal_table(first_candle, last_candle, rr, stat_success)
+                    success_msg = "no rr"
+                    self.record_to_signal_table(first_candle, last_candle, rr, success_msg)
                     i += 3
 
-                elif (prev_high - entry) / (entry - sl) < r_r:
-                    first_candle = first["datetime"]
-                    last_candle = current["datetime"]
-                    rr = 1
-                    stat_success = "no rr"
-                    self.record_to_signal_table(first_candle, last_candle, rr, stat_success)
-                    i += 3
-
+                # pattern worked and risk to reward is enough
                 elif current["High"] >= prev_high:
                     first_candle = first["datetime"]
                     last_candle = current["datetime"]
                     rr = 1
-                    stat_success = "yes"
-                    self.record_to_signal_table(first_candle, last_candle, rr, stat_success)
+                    success_msg = "yes"
+                    self.record_to_signal_table(first_candle, last_candle, rr, success_msg)
                     strat_success += 1
                     i += 3
             else:
@@ -338,13 +360,13 @@ class ThreeBarSignalRepository:
             "SSSSSSSSSS  Strategy success probability: ",
             success_probability
         )
-        return first_candle, last_candle, success_probability, stat_success
+        return first_candle, last_candle, success_probability, success_msg
 
-    def record_to_signal_table(self, first_candle, last_candle, rr, stat_success):
+    def record_to_signal_table(self, first_candle, last_candle, rr, success_msg):
         timeframe = 5
         pre_buffer = first_candle - timedelta(minutes=timeframe*10)
         post_buffer = last_candle + timedelta(minutes=timeframe*10)
-        print("PPPPPPPPPP buffer ", pre_buffer, first_candle, post_buffer, last_candle)
+        print(f"PreBuffer {pre_buffer} FirstCandle {first_candle} LastCandle {last_candle} PostBuffer {post_buffer}")
         try:
             with pool.connection() as conn:
                 with conn.cursor() as db:
@@ -353,7 +375,7 @@ class ThreeBarSignalRepository:
                         INSERT INTO strategy_signal (prebuffer, Timestart, Timeeend, postbuffer, riskreward, success)
                         VALUES (%s, %s, %s, %s, %s, %s)
                         """,
-                        [pre_buffer, first_candle, last_candle, post_buffer, rr, stat_success]
+                        [pre_buffer, first_candle, last_candle, post_buffer, rr, success_msg]
                     )
 
         except Exception as e:
