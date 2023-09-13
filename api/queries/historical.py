@@ -9,6 +9,8 @@ from typing import List, Union
 
 from pydantic import BaseModel
 from queries.pool import pool
+import psycopg2
+from psycopg2.sql import SQL, Identifier
 
 
 class HttpError(BaseModel):
@@ -66,7 +68,7 @@ upon close, if candle high two candles back is higher than current candle close
 
  """
 class HistoricalDataRepository:
-    def update_historical_data(self, data):
+    def update_historical_data(self, data, stock):
         def calculate_indicators(data):
             data['vwap'] = (data['1. open'] + data['2. high'] + data['3. low'] + data['4. close']) / 4
             data['ema009'] = data['4. close'].ewm(span=9, adjust=False).mean()
@@ -76,20 +78,37 @@ class HistoricalDataRepository:
 
         data = calculate_indicators(data)
 
+        # prevent sql injection
+        allowed_table_name = ["QQQ", "TSLA", "SPY", "ES", "NQ"]
+        if stock not in allowed_table_name:
+            raise ValueError("Invalid Stock Name")
+        else:
+            table_name = stock.lower() + "_prices"
         try:
             with pool.connection() as conn:
                 with conn.cursor() as db:
+
                     for date, row in data.iterrows():
                         insert_query = """
                             INSERT INTO trading_data (timestamp, datetime, open, high, low, close, volume, vwap, ema009, ema021, ema200)
                             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                        """
+                            """
                         values = [
                             date.timestamp(), date.to_pydatetime(), row['1. open'], row['2. high'], row['3. low'], row['4. close'],
                             row['5. volume'], row['vwap'], row['ema009'], row['ema021'], row['ema200']
                         ]
                         db.execute(
                             insert_query, values
+                        )
+                        insert_price =f"""
+                            INSERT INTO {table_name} (price)
+                            VALUES (%s), (%s)
+                            """
+                        values_price = [
+                            row['2. high'], row['3. low']
+                        ]
+                        db.execute(
+                            insert_price, values_price
                         )
                     print("detail Historical data updated.")
                     return {"detail": "Historical data updated."}
@@ -152,15 +171,27 @@ class HistoricalDataRepository:
 
 class SignalService:
     def __init__(self):
-        self.threebar_repo = ThreeBarSignalRepository()
-        self.trendline_repo = TrendlineSignalRepository()
+        pass
 
-    def use_threebar(self, data):
-        return self.threebar_repo.use_threebar(data)
+    def create_strategy(self, data):
+        # self.threebar_repo = ThreeBarSignalRepository()
+        # self.trendline_repo = TrendlineSignalRepository()
+        # self.levels_repo = LevelsRepository()
+        pass
 
-    def use_trendline(self, data):
-        return self.trendline_repo.use_trendline(data)
+        # def use_threebar(self, data):
+        #     return self.threebar_repo.use_threebar(data)
 
+        # def use_trendline(self, data):
+        #     return self.trendline_repo.use_trendline(data)
+#     def get(self):
+#         try:
+#             with pool.connection() as conn:
+#                 with conn.cursor() as db:
+#                     result = db.execute(
+#                         """
+# SELECT strategy_signal.timestart, strategy_signal.timeend, ema009, ema021, ema200, vwap, tl01, volume, strategy_signal.prebuffer, strategy_signal.postbuffer"""
+#                     )
     # def signal_to_frontend(
 #     self, fraction: int = 1
 # ) -> Union[HttpError, List[HistoricalDataPoint]]:
@@ -233,7 +264,8 @@ class ThreeBarSignalRepository:
             pass
 
 
-    def data_to_three_bar(self) -> List[ThreeBarSignal]:
+    def data_to_three_bar(self, stock) -> List[ThreeBarSignal]:
+        stock = stock
         try:
             with pool.connection() as conn:
                 with conn.cursor() as db:
@@ -261,7 +293,7 @@ class ThreeBarSignalRepository:
                             "Low": float(low),
                         }
                         historical_data.append(candle)
-                    return self.three_bar(historical_data)
+                    return self.three_bar(historical_data, stock)
 
         except Exception as e:
             print(e)
@@ -269,7 +301,7 @@ class ThreeBarSignalRepository:
                 "detail": "There was a problem reading QUERIES.data_to_three_bar from trading_data db."
             }
 
-    def three_bar(self, candles):
+    def three_bar(self, candles, stock):
         candle2 = 0.5
         prev_high = 0
         prev_low = 0
@@ -279,6 +311,11 @@ class ThreeBarSignalRepository:
         i = 2
         price_increment = .25 # increment for ES futures index
         # global prev_high, prev_low, strat_implemented, strat_success, risk_to_reward
+        allowed_table_name = ["QQQ", "TSLA", "SPY", "ES", "NQ"]
+        if stock not in allowed_table_name:
+            raise ValueError("Invalid Stock Name")
+        else:
+            table_name = stock.lower() + "_prices"
 
         while i <= len(candles)-1:
             current = candles[i]
@@ -292,6 +329,7 @@ class ThreeBarSignalRepository:
                 prev_low = first["Low"]
             elif first["Low"] < prev_low:
                 prev_low = first["Low"]
+
 
             # calculating risk to reward based on candle size
             first_candle_height = first["Close"] - first["Low"]
@@ -316,6 +354,11 @@ class ThreeBarSignalRepository:
                 # using next candle to check for exit
                 entry_candle = candles[j]
 
+                # calculate risk to reward level needed
+                level_needed = second_candle_height * risk_to_reward + second["Open"]
+
+                level = LevelsRepository.levels_to_signal(table_name, level_needed)
+
                 # run loop until either stop loss or prev high is equal to current candle price
                 while (
                     entry_candle["Low"] > stop_loss
@@ -325,7 +368,7 @@ class ThreeBarSignalRepository:
                     j += 1
                     entry_candle = candles[j]
 
-                # pattern failed to work out
+                # pattern failed to work out from stop loss
                 if entry_candle["Low"] <= stop_loss:
                     first_candle = first["datetime"]
                     last_candle = entry_candle["datetime"]
@@ -335,16 +378,17 @@ class ThreeBarSignalRepository:
                     i += j
 
                 # pattern worked but risk to reward not enough
-                elif (prev_high - entry) / (entry - stop_loss) < risk_to_reward:
+                elif (level - entry) / (entry - stop_loss) < risk_to_reward:
                     first_candle = first["datetime"]
                     last_candle = current["datetime"]
                     rr = 1
                     success_msg = "no rr"
                     self.record_to_signal_table(first_candle, last_candle, rr, success_msg)
                     i += 3
+                    print(f"RR no good  SL:{stop_loss}  Entry:{entry}  Lvl Needed:{level}")
 
                 # pattern worked and risk to reward is enough
-                elif current["High"] >= prev_high:
+                elif current["High"] >= level:
                     first_candle = first["datetime"]
                     last_candle = current["datetime"]
                     rr = 1
@@ -352,6 +396,7 @@ class ThreeBarSignalRepository:
                     self.record_to_signal_table(first_candle, last_candle, rr, success_msg)
                     strat_success += 1
                     i += 3
+                    print("RR GGGG Good ", entry, level)
             else:
                 i += 1
 
@@ -366,11 +411,11 @@ class ThreeBarSignalRepository:
         timeframe = 5
         pre_buffer = first_candle - timedelta(minutes=timeframe*10)
         post_buffer = last_candle + timedelta(minutes=timeframe*10)
-        print(f"PreBuffer {pre_buffer} FirstCandle {first_candle} LastCandle {last_candle} PostBuffer {post_buffer}")
+        # print(f"PreBuffer {pre_buffer} FirstCandle {first_candle} LastCandle {last_candle} PostBuffer {post_buffer}")
         try:
             with pool.connection() as conn:
                 with conn.cursor() as db:
-                    result = db.execute(
+                    db.execute(
                         """
                         INSERT INTO strategy_signal (prebuffer, Timestart, Timeeend, postbuffer, riskreward, success)
                         VALUES (%s, %s, %s, %s, %s, %s)
@@ -531,3 +576,67 @@ class TrendlineSignalRepository:
             #         trend = "descending"
             # else:
             #     trend = "no_trend"
+
+class LevelsRepository:
+    def data_to_levels(self, stock):
+        allowed_table_name = ["QQQ", "TSLA", "SPY", "ES", "NQ"]
+        if stock not in allowed_table_name:
+            raise ValueError("Invalid Stock Name")
+        else:
+            table_name = stock.lower() + "_prices"
+        try:
+            with pool.connection() as conn:
+                with conn.cursor() as db:
+                    levels_query = f"""
+                    WITH HourlyHighLow AS (
+                        SELECT
+                            DATE_TRUNC('hour', datetime) AS hour,
+                            MAX(high) AS max_high,
+                            MIN(low) AS min_low
+                        FROM trading_data
+                        GROUP BY hour
+                    )
+                    UPDATE {table_name}
+                    SET
+                        level01 = CASE
+                            WHEN level01 = 0 THEN 1
+                            ELSE level01
+                        END,
+                        level02 = CASE
+                            WHEN level01 = 1 AND level02 = 0 THEN 1
+                            ELSE level02
+                        END
+                    WHERE
+                        price IN (SELECT max_high FROM HourlyHighLow)
+                        OR price IN (SELECT min_low FROM HourlyHighLow)
+                    """
+                    db.execute(
+                        levels_query
+                    )
+        except Exception as e:
+            print(e)
+            return {
+                "detail": "There was a problem with levels query or database."
+            }
+
+    # find nearest levels
+    def levels_to_signal(table_name, level_needed):
+        try:
+            with pool.connection() as conn:
+                with conn.cursor() as db:
+                    result = db.execute(
+                        f"""
+                        SELECT price FROM {table_name}
+                        WHERE level02 > 0
+                        AND price >= {level_needed}
+                        ORDER BY price
+                        """
+                    )
+                    level = result.fetchone()
+                    level_float = float(level[0])
+                    return level_float
+        except Exception as e:
+            print(e)
+            return {
+                "detail": "There was a problem reading data from stock prices table"
+            }

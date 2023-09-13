@@ -12,11 +12,15 @@ from queries.historical import (
     ThreeBarSignal,
     HistoricalDataRepository,
     ThreeBarSignalRepository,
+    LevelsRepository,
     HttpError,
     SystemMessage,
 )
 
 router = APIRouter()
+
+# @router.get("/strategy", response_model=SystemMessage):
+#     pass
 
 @router.get("/signal", response_model=SystemMessage)
 async def signal_data_to_output(signal_data: dict):
@@ -39,18 +43,35 @@ async def signal_data_to_output(signal_data: dict):
 def get_updated_data(repo: HistoricalDataRepository = Depends()):
     API_key = os.environ.get("ALPHAVANTAGEKEY")
     ts = TimeSeries(key=API_key, output_format='pandas')
-    data, _ = ts.get_intraday('QQQ', interval='5min', outputsize='full')
-    return repo.update_historical_data(data)
+    stock = 'TSLA'
+    data, _ = ts.get_intraday(stock, interval='5min', outputsize='full')
+    return repo.update_historical_data(data, stock)
 
 @router.get("/threebarsignal", response_model=SystemMessage)
 def get_threebarsignal_data(repo: ThreeBarSignalRepository = Depends()):
     print("THREE BAR SIGNAL")
+    stock = 'TSLA'
     try:
-        threebarsignal_data = repo.data_to_three_bar()
+        threebarsignal_data = repo.data_to_three_bar(stock)
     except Exception:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Unable to retrieve test threebarsignal data.",
+        )
+    message = {}
+    message['detail'] = "test"
+    return message
+
+@router.get("/levels", response_model=SystemMessage)
+def data_to_levels(repo: LevelsRepository = Depends()):
+    print("Data to Levels")
+    stock = 'TSLA'
+    try:
+        levels_data = repo.data_to_levels(stock)
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Unable to retrieve test levels data.",
         )
     message = {}
     message['detail'] = "test"

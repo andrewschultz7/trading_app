@@ -47,6 +47,48 @@ steps = [
         DROP TABLE strategy_signal;
         """,
     ],
+    [
+        """
+        CREATE TABLE tsla_prices (
+        price DECIMAL(10,2),
+        level01 INT DEFAULT 0,
+        timestamp01 TIMESTAMP,
+        level02 INT DEFAULT 0,
+        timestamp02 TIMESTAMP
+        )
+        """,
+        """
+        DROP TABLE tsla_prices;
+        """,
+    ],
+    [
+        """
+        CREATE TABLE es_prices (
+        price DECIMAL(10,2),
+        level01 INT DEFAULT 0,
+        timestamp01 TIMESTAMP,
+        level02 INT DEFAULT 0,
+        timestamp02 TIMESTAMP
+        )
+        """,
+        """
+        DROP TABLE es_prices;
+        """,
+    ],
+    [
+        """
+        CREATE TABLE nq_prices (
+        price DECIMAL(10,2) UNIQUE,
+        level01 INT DEFAULT 0,
+        timestamp01 TIMESTAMP,
+        level02 INT DEFAULT 0,
+        timestamp02 TIMESTAMP
+        )
+        """,
+        """
+        DROP TABLE nq_prices;
+        """,
+    ],
 ]
 # pg-admin_trading_data
 # pg_trading_data
