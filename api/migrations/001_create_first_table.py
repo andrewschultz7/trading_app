@@ -39,7 +39,9 @@ steps = [
         timeeend TIMESTAMP,
         postbuffer TIMESTAMP,
         riskreward INT,
-        success TEXT
+        success TEXT,
+        stoploss DECIMAL(10,2),
+        level DECIMAL(10,2)
         );
         """,
         # "Down" SQL statement

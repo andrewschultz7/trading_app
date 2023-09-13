@@ -50,10 +50,25 @@ class TrendlineSignal(BaseModel):
     success: str
 
 class StrategySignal(BaseModel):
-    timestart: int
-    timeend: int
+    prebuffer: str
+    box: dict
+    postbuffer: str
     riskreward: int
     success: str
+    stoploss: float
+    level: float
+    open: float
+    high: float
+    low: float
+    close: float
+    volume: int
+    vwap: float
+    vwapf: float
+    ema009: float
+    ema021: float
+    ema200: float
+    tl01: float
+
 
 class DateTimeEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -61,12 +76,7 @@ class DateTimeEncoder(json.JSONEncoder):
             return obj.isoformat()
         return super().default(obj)
 
-"""
-level function
-upon close, if candle high two candles back is higher than current candle close
-    run query to find prior daily occurences
 
- """
 class HistoricalDataRepository:
     def update_historical_data(self, data, stock):
         def calculate_indicators(data):
@@ -174,10 +184,62 @@ class SignalService:
         pass
 
     def create_strategy(self, data):
-        # self.threebar_repo = ThreeBarSignalRepository()
-        # self.trendline_repo = TrendlineSignalRepository()
-        # self.levels_repo = LevelsRepository()
-        pass
+        self.levels_repo = LevelsRepository()
+        self.threebar_repo = ThreeBarSignalRepository()
+        self.trendline_repo = TrendlineSignalRepository()
+
+    def get_strategy(self, stock) -> Union[HttpError, List[StrategySignal]]:
+        allowed_table_name = ["QQQ", "TSLA", "SPY", "ES", "NQ"]
+        if stock not in allowed_table_name:
+            raise ValueError("Invalid Stock Name")
+        else:
+            table_name = stock.lower() + "_prices"
+        try:
+            with pool.connection() as conn:
+                with conn.cursor() as db:
+                    result = db.execute(
+                        """
+                        SELECT ss.*, td.*
+                        FROM strategy_signal AS ss
+                        JOIN trading_data AS td
+                        ON td.datetime >= ss.prebuffer AND td.datetime <= ss.postbuffer
+                        ORDER BY ss.timestart;
+                        """
+                    )
+                    response = [
+                        self.record_to_strat_out(record)
+                        for record in result
+                    ]
+                    return response
+        except Exception as e:
+            print(e)
+            return {
+                "detail": "There was a problem with pricing table"
+            }
+
+    def record_to_strat_out(self, record):
+        return StrategySignal(
+            prebuffer=str(record[0]),
+            box={'timestart': record[1],
+                 'timeend': record[2]},
+            postbuffer=str(record[3]),
+            riskreward=record[4],
+            success=record[5],
+            stoploss=record[8],
+            level=record[9],
+            open=record[10],
+            close=record[11],
+            high=record[12],
+            low=record[13],
+            volume=record[14],
+            vwap=record[15],
+            vwapf=record[16] or 0,
+            ema009=record[17],
+            ema021=record[18],
+            ema200=record[19],
+            tl01=record[20] or 0,
+        )
+
 
         # def use_threebar(self, data):
         #     return self.threebar_repo.use_threebar(data)
@@ -353,7 +415,6 @@ class ThreeBarSignalRepository:
 
                 # using next candle to check for exit
                 entry_candle = candles[j]
-
                 # calculate risk to reward level needed
                 level_needed = second_candle_height * risk_to_reward + second["Open"]
 
@@ -374,7 +435,7 @@ class ThreeBarSignalRepository:
                     last_candle = entry_candle["datetime"]
                     rr = 1
                     success_msg = "no"
-                    self.record_to_signal_table(first_candle, last_candle, rr, success_msg)
+                    self.record_to_signal_table(first_candle, last_candle, rr, success_msg, stop_loss, level)
                     i += j
 
                 # pattern worked but risk to reward not enough
@@ -383,7 +444,7 @@ class ThreeBarSignalRepository:
                     last_candle = current["datetime"]
                     rr = 1
                     success_msg = "no rr"
-                    self.record_to_signal_table(first_candle, last_candle, rr, success_msg)
+                    self.record_to_signal_table(first_candle, last_candle, rr, success_msg, stop_loss, level)
                     i += 3
                     print(f"RR no good  SL:{stop_loss}  Entry:{entry}  Lvl Needed:{level}")
 
@@ -393,7 +454,7 @@ class ThreeBarSignalRepository:
                     last_candle = current["datetime"]
                     rr = 1
                     success_msg = "yes"
-                    self.record_to_signal_table(first_candle, last_candle, rr, success_msg)
+                    self.record_to_signal_table(first_candle, last_candle, rr, success_msg, stop_loss, level)
                     strat_success += 1
                     i += 3
                     print("RR GGGG Good ", entry, level)
@@ -407,7 +468,7 @@ class ThreeBarSignalRepository:
         )
         return first_candle, last_candle, success_probability, success_msg
 
-    def record_to_signal_table(self, first_candle, last_candle, rr, success_msg):
+    def record_to_signal_table(self, first_candle, last_candle, rr, success_msg, stop_loss, level):
         timeframe = 5
         pre_buffer = first_candle - timedelta(minutes=timeframe*10)
         post_buffer = last_candle + timedelta(minutes=timeframe*10)
@@ -417,10 +478,10 @@ class ThreeBarSignalRepository:
                 with conn.cursor() as db:
                     db.execute(
                         """
-                        INSERT INTO strategy_signal (prebuffer, Timestart, Timeeend, postbuffer, riskreward, success)
-                        VALUES (%s, %s, %s, %s, %s, %s)
+                        INSERT INTO strategy_signal (prebuffer, Timestart, Timeeend, postbuffer, riskreward, success, stoploss, level)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                         """,
-                        [pre_buffer, first_candle, last_candle, post_buffer, rr, success_msg]
+                        [pre_buffer, first_candle, last_candle, post_buffer, rr, success_msg, stop_loss, level]
                     )
 
         except Exception as e:
@@ -434,7 +495,9 @@ class ThreeBarSignalRepository:
             timestart=record[0],
             timeend=record[1],
             riskreward=record[2],
-            success=record[3]
+            success=record[3],
+            stoploss=record[4],
+            level=record[5],
         )
 
 class TrendlineSignalRepository:
@@ -584,6 +647,8 @@ class LevelsRepository:
             raise ValueError("Invalid Stock Name")
         else:
             table_name = stock.lower() + "_prices"
+
+        # finds hourly high/low and creates level if high/low repeats
         try:
             with pool.connection() as conn:
                 with conn.cursor() as db:
