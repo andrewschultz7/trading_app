@@ -120,6 +120,45 @@ def data_to_levels(
     return message
 
 
+@router.get("/threebarsignal", response_model=SystemMessage)
+def get_threebarsignal_data(
+    repo: ThreeBarSignalRepository = Depends(),
+    stock: str = Query(..., title="Stock"),
+):
+    print("THREE BAR SIGNAL")
+    stock = stock
+    try:
+        threebarsignal_data = repo.data_to_three_bar(stock)
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Unable to retrieve test threebarsignal data.",
+        )
+    message = {}
+    message["detail"] = "test"
+    print("get threebar finished")
+    return message
+
+
+@router.get("/levels", response_model=SystemMessage)
+def data_to_levels(
+    repo: LevelsRepository = Depends(), stock: str = Query(..., title="Stock")
+):
+    print("Data to Levels")
+    stock = stock
+    try:
+        levels_data = repo.data_to_levels(stock)
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Unable to retrieve test levels data.",
+        )
+    message = {}
+    message["detail"] = "test"
+    print("get levels finished")
+    return message
+
+
 @router.get(
     "/historical/{fraction}",
     # response_model=Union[List[HistoricalDataPoint], HttpError],
