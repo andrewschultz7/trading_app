@@ -50,7 +50,7 @@ services:
       - ./api:/app
     environment:
       SIGNING_KEY: ${SIGNING_KEY}
-      RAPIDAPIKEY: ${RAPIDAPIKEY}
+      ALPHAVANTAGEKEY: ${ALPHAVANTAGEKEY}
       DATABASE_URL: postgresql://trading_app:password@postgres/trading_app
       WAIT_HOSTS: postgres:5432
       PORT: 8000
