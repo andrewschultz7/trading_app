@@ -250,14 +250,14 @@ const App = () => {
     }
   }, []);
 
-  // useEffect(() => {
-  //   fetchData();
-  //   const interval = setInterval(fetchData, 5000 * 2);
+  useEffect(() => {
+    fetchData();
+    const interval = setInterval(fetchData, 5000 * 2);
 
-  //   return () => {
-  //     clearInterval(interval);
-  //   };
-  // }, [fetchData]);
+    return () => {
+      clearInterval(interval);
+    };
+  }, [fetchData]);
 
   const handleChartClick = useCallback(({ dataPointIndex }) => {
     if (chartRef.current) {
