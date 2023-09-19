@@ -97,29 +97,36 @@ class HistoricalDataRepository:
         try:
             with pool.connection() as conn:
                 with conn.cursor() as db:
-
                     for date, row in data.iterrows():
-                        insert_query = """
-                            INSERT INTO trading_data (timestamp, datetime, open, high, low, close, volume, vwap, ema009, ema021, ema200)
-                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                            """
-                        values = [
-                            date.timestamp(), date.to_pydatetime(), row['1. open'], row['2. high'], row['3. low'], row['4. close'],
-                            row['5. volume'], row['vwap'], row['ema009'], row['ema021'], row['ema200']
-                        ]
-                        db.execute(
-                            insert_query, values
-                        )
-                        insert_price =f"""
-                            INSERT INTO {table_name} (price)
-                            VALUES (%s), (%s)
-                            """
-                        values_price = [
-                            row['2. high'], row['3. low']
-                        ]
-                        db.execute(
-                            insert_price, values_price
-                        )
+                        try:
+                            insert_query = """
+                                INSERT INTO trading_data (timestamp, datetime, open, high, low, close, volume, vwap, ema009, ema021, ema200)
+                                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                ON CONFLICT (datetime) DO NOTHING
+                                """
+                            values = [
+                                date.timestamp(), date.to_pydatetime(), row['1. open'], row['2. high'], row['3. low'], row['4. close'],
+                                row['5. volume'], row['vwap'], row['ema009'], row['ema021'], row['ema200']
+                            ]
+                            db.execute(
+                                insert_query, values
+                            )
+                        except Exception as e:
+                            print(e)
+                        try:
+                            insert_price =f"""
+                                INSERT INTO {table_name} (price)
+                                VALUES (%s), (%s)
+                                ON CONFLICT (price) DO NOTHING
+                                """
+                            values_price = [
+                                row['2. high'], row['3. low']
+                            ]
+                            db.execute(
+                                insert_price, values_price
+                            )
+                        except Exception as e:
+                            print(e)
                     print("detail Historical data updated.")
                     return {"detail": "Historical data updated."}
 
@@ -364,6 +371,8 @@ class ThreeBarSignalRepository:
             }
 
     def three_bar(self, candles, stock):
+        print(candles[2])
+        print(candles[1])
         candle2 = 0.5
         prev_high = 0
         prev_low = 0
@@ -379,11 +388,13 @@ class ThreeBarSignalRepository:
         else:
             table_name = stock.lower() + "_prices"
 
+        current = candles[i]
+        second = candles[i - 1]
+        first = candles[i - 2]
         while i <= len(candles)-1:
             current = candles[i]
             second = candles[i - 1]
             first = candles[i - 2]
-
 
             if first["High"] > float(prev_high):
                 prev_high = first["High"]
@@ -403,13 +414,11 @@ class ThreeBarSignalRepository:
                 current["Open"] < current["Close"]
                 and second["Open"] > second["Close"]
                 and first["Open"] < first["Close"]
-                and
                 # criteria of second candle vs first
-                second_candle_height <= first_candle_height * candle2
+                # and second_candle_height <= first_candle_height * candle2
             ):
                 strat_implemented += 1
                 j = i + 1
-
                 # price increment above pattern where we would like to enter a trade
                 entry = second["Open"] + price_increment
 
@@ -417,9 +426,7 @@ class ThreeBarSignalRepository:
                 entry_candle = candles[j]
                 # calculate risk to reward level needed
                 level_needed = second_candle_height * risk_to_reward + second["Open"]
-
                 level = LevelsRepository.levels_to_signal(table_name, level_needed)
-
                 # run loop until either stop loss or prev high is equal to current candle price
                 while (
                     entry_candle["Low"] > stop_loss
@@ -446,7 +453,6 @@ class ThreeBarSignalRepository:
                     success_msg = "no rr"
                     self.record_to_signal_table(first_candle, last_candle, rr, success_msg, stop_loss, level)
                     i += 3
-                    print(f"RR no good  SL:{stop_loss}  Entry:{entry}  Lvl Needed:{level}")
 
                 # pattern worked and risk to reward is enough
                 elif current["High"] >= level:
@@ -457,22 +463,16 @@ class ThreeBarSignalRepository:
                     self.record_to_signal_table(first_candle, last_candle, rr, success_msg, stop_loss, level)
                     strat_success += 1
                     i += 3
-                    print("RR GGGG Good ", entry, level)
             else:
                 i += 1
-
-        success_probability = strat_success / strat_implemented
-        print(
-            "SSSSSSSSSS  Strategy success probability: ",
-            success_probability
-        )
+        success_probability = 0.1
+        # success_probability = strat_success / strat_implemented
         return first_candle, last_candle, success_probability, success_msg
 
     def record_to_signal_table(self, first_candle, last_candle, rr, success_msg, stop_loss, level):
         timeframe = 5
         pre_buffer = first_candle - timedelta(minutes=timeframe*10)
         post_buffer = last_candle + timedelta(minutes=timeframe*10)
-        # print(f"PreBuffer {pre_buffer} FirstCandle {first_candle} LastCandle {last_candle} PostBuffer {post_buffer}")
         try:
             with pool.connection() as conn:
                 with conn.cursor() as db:
@@ -663,17 +663,25 @@ class LevelsRepository:
                     )
                     UPDATE {table_name}
                     SET
-                        level01 = CASE
-                            WHEN level01 = 0 THEN 1
-                            ELSE level01
-                        END,
-                        level02 = CASE
-                            WHEN level01 = 1 AND level02 = 0 THEN 1
-                            ELSE level02
-                        END
+                        level01 = 1
                     WHERE
-                        price IN (SELECT max_high FROM HourlyHighLow)
-                        OR price IN (SELECT min_low FROM HourlyHighLow)
+                        level01 = 0
+                        AND (price IN (SELECT max_high FROM HourlyHighLow)
+                        OR price IN (SELECT min_low FROM HourlyHighLow));
+                    WITH HourlyHighLow AS (
+                        SELECT
+                            DATE_TRUNC('hour', datetime) AS hour,
+                            MAX(high) AS max_high,
+                            MIN(low) AS min_low
+                        FROM trading_data
+                        GROUP BY hour
+                    )
+                    UPDATE {table_name}
+                    SET
+                        level02 = 1
+                    WHERE level01 = 1 AND level02 = 0
+                        AND (price IN (SELECT max_high FROM HourlyHighLow)
+                        OR price IN (SELECT min_low FROM HourlyHighLow));
                     """
                     db.execute(
                         levels_query

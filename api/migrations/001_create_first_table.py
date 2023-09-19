@@ -11,7 +11,7 @@ steps = [
         """
         CREATE TABLE trading_data (
         timestamp BIGINT,
-        datetime TIMESTAMP,
+        datetime TIMESTAMP UNIQUE,
         open DECIMAL(10,2),
         close DECIMAL(10,2),
         high DECIMAL(10,2),
@@ -52,7 +52,7 @@ steps = [
     [
         """
         CREATE TABLE tsla_prices (
-        price DECIMAL(10,2),
+        price DECIMAL(10,2) UNIQUE,
         level01 INT DEFAULT 0,
         timestamp01 TIMESTAMP,
         level02 INT DEFAULT 0,
@@ -66,7 +66,7 @@ steps = [
     [
         """
         CREATE TABLE es_prices (
-        price DECIMAL(10,2),
+        price DECIMAL(10,2) UNIQUE,
         level01 INT DEFAULT 0,
         timestamp01 TIMESTAMP,
         level02 INT DEFAULT 0,

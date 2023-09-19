@@ -5,7 +5,7 @@ import pandas as pd
 
 from alpha_vantage.timeseries import TimeSeries
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from queries.historical import (
     HistoricalDataPoint,
     SignalService,
@@ -18,6 +18,18 @@ from queries.historical import (
 )
 
 router = APIRouter()
+
+@router.get("/populate_data", response_model=SystemMessage)
+def get_historical_data(
+    repo_updateddata: HistoricalDataRepository = Depends(),
+    repo_threebar: ThreeBarSignalRepository = Depends(),
+    repo_levels: LevelsRepository = Depends()
+    ):
+    stock = 'TSLA'
+    intraday = get_updated_data(repo_updateddata, stock)
+    levels = data_to_levels(repo_levels, stock)
+    threebar = get_threebarsignal_data(repo_threebar, stock)
+    return intraday, threebar, levels
 
 @router.get("/strategy", response_model=SystemMessage)
 def get_strategy_data(repo: SignalService = Depends()):
@@ -50,17 +62,27 @@ def get_strategy_data(repo: SignalService = Depends()):
 #         )
 
 @router.get("/update_data", response_model=SystemMessage)
-def get_updated_data(repo: HistoricalDataRepository = Depends()):
+def get_updated_data(
+    repo: HistoricalDataRepository = Depends(),
+    stock: str = Query(..., title="Stock")):
     API_key = os.environ.get("ALPHAVANTAGEKEY")
     ts = TimeSeries(key=API_key, output_format='pandas')
-    stock = 'TSLA'
+    # stock = 'TSLA'
+    stock = stock
+    print("GET UPDATED DATA")
     data, _ = ts.get_intraday(stock, interval='5min', outputsize='full')
+    print("get updated data finished")
     return repo.update_historical_data(data, stock)
 
+
+
 @router.get("/threebarsignal", response_model=SystemMessage)
-def get_threebarsignal_data(repo: ThreeBarSignalRepository = Depends()):
+def get_threebarsignal_data(
+    repo: ThreeBarSignalRepository = Depends(),
+    stock: str = Query(..., title="Stock")
+    ):
     print("THREE BAR SIGNAL")
-    stock = 'TSLA'
+    stock = stock
     try:
         threebarsignal_data = repo.data_to_three_bar(stock)
     except Exception:
@@ -70,12 +92,16 @@ def get_threebarsignal_data(repo: ThreeBarSignalRepository = Depends()):
         )
     message = {}
     message['detail'] = "test"
+    print("get threebar finished")
     return message
 
 @router.get("/levels", response_model=SystemMessage)
-def data_to_levels(repo: LevelsRepository = Depends()):
+def data_to_levels(
+    repo: LevelsRepository = Depends(),
+    stock: str = Query(..., title="Stock")
+    ):
     print("Data to Levels")
-    stock = 'TSLA'
+    stock = stock
     try:
         levels_data = repo.data_to_levels(stock)
     except Exception:
@@ -85,6 +111,7 @@ def data_to_levels(repo: LevelsRepository = Depends()):
         )
     message = {}
     message['detail'] = "test"
+    print("get levels finished")
     return message
 
 @router.get(
