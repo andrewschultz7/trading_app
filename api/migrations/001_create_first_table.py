@@ -91,6 +91,28 @@ steps = [
         DROP TABLE nq_prices;
         """,
     ],
+    [
+        """
+        CREATE TABLE trades (
+        entrytime TIMESTAMP,
+        ticker TEXT,
+        contract TEXT,
+        entryprice DECIMAL(10,2),
+        exitprice DECIMAL(10,2),
+        stoploss DECIMAL(10,2),
+        tp01 DECIMAL(10,2),
+        tp02 DECIMAL(10,2),
+        tp03 DECIMAL(10,2),
+        strategy TEXT,
+        probability DECIMAL(3,2),
+        riskreward INT,
+        accountbalance DECIMAL(10,2)
+        )
+        """,
+        """
+        DROP TABLE trades;
+        """,
+    ],
 ]
 # pg-admin_trading_data
 # pg_trading_data
