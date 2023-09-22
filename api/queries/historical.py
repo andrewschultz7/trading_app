@@ -1,17 +1,16 @@
-import sys, time
-import simplejson as json
-import pandas as pd
-
-# from sqlalchemy import create_engine
-from alpha_vantage.timeseries import TimeSeries
-
+import sys
+import time
 from datetime import datetime as dt, timedelta
 from typing import List, Union
 
+import pandas as pd
+import psycopg2
+import simplejson as json
+# from sqlalchemy import create_engine
+from alpha_vantage.timeseries import TimeSeries
+from psycopg2.sql import SQL, Identifier
 from pydantic import BaseModel
 from queries.pool import pool
-import psycopg2
-from psycopg2.sql import SQL, Identifier
 
 
 class HttpError(BaseModel):
@@ -151,7 +150,7 @@ class HistoricalDataRepository:
 
     def get_fraction_historical_data(
         self, fraction: int = 1
-    ) -> Union[HttpError, List[HistoricalDataPoint]]:
+    ) -> HttpError | list[HistoricalDataPoint]:
         try:
             with pool.connection() as conn:
                 with conn.cursor() as db:
@@ -177,7 +176,7 @@ class HistoricalDataRepository:
 
     def get_range_historical_data(
         self, start, end
-    ) -> Union[HttpError, List[HistoricalDataPoint]]:
+    ) -> HttpError | list[HistoricalDataPoint]:
         try:
             with pool.connection() as conn:
                 with conn.cursor() as db:
@@ -234,7 +233,7 @@ class SignalService:
         self.threebar_repo = ThreeBarSignalRepository()
         self.trendline_repo = TrendlineSignalRepository()
 
-    def get_strategy(self, stock) -> Union[HttpError, List[StrategySignal]]:
+    def get_strategy(self, stock) -> HttpError | list[StrategySignal]:
         allowed_table_name = ["QQQ", "TSLA", "SPY", "ES", "NQ"]
         if stock not in allowed_table_name:
             raise ValueError("Invalid Stock Name")
@@ -267,8 +266,8 @@ class SignalService:
             postbuffer=str(record[3]),
             riskreward=record[4],
             success=record[5],
-            stoploss=record[8],
-            level=record[9],
+            stoploss=record[6],
+            level=record[7],
             open=record[10],
             close=record[11],
             high=record[12],
@@ -368,7 +367,7 @@ class ThreeBarSignalRepository:
         else:
             pass
 
-    def data_to_three_bar(self, stock) -> List[ThreeBarSignal]:
+    def data_to_three_bar(self, stock) -> list[ThreeBarSignal]:
         stock = stock
         try:
             with pool.connection() as conn:
@@ -572,7 +571,7 @@ class ThreeBarSignalRepository:
 
 
 class TrendlineSignalRepository:
-    def data_to_trendline(self) -> List[TrendlineSignal]:
+    def data_to_trendline(self) -> list[TrendlineSignal]:
         try:
             with pool.connection() as conn:
                 with conn.cursor() as db:
