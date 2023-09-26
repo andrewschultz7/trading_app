@@ -3,12 +3,6 @@ import "./App.css";
 import Chart from "react-apexcharts";
 import { Link } from "react-router-dom";
 
-const directionEmojis = {
-  up: "🚀",
-  down: "🔻",
-  "": "",
-};
-
 const initialAnnotations = [];
 
 const initialChartOptions = {
@@ -161,53 +155,13 @@ const Strategy = () => {
 
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+  }, []);
 
   useEffect(() => {
     if (strategyData && curStrategyData >= 0) {
       fetchCandles();
     }
   }, [strategyData, curStrategyData, fetchCandles]);
-
-  //   const handleChartClick = useCallback(
-  //     ({ dataPointIndex }) => {
-  //       if (chartRef.current) {
-  //         const annotationText = `Annotation ${chartData.annotations.length + 1}`;
-  //         const chart = chartRef.current.chart;
-  //         const series = chart.w.globals.series[0];
-  //         const dataItem = series[dataPointIndex];
-
-  //         const offsetY = -30 * chartData.annotations.length;
-
-  //         const annotation = {
-  //           x: dataItem.x,
-  //           y: dataItem.y[3],
-  //           marker: {
-  //             size: 4,
-  //             fillColor: '#ff0000',
-  //             strokeColor: '#fff',
-  //             radius: 2,
-  //           },
-  //           label: {
-  //             borderColor: '#ff0000',
-  //             style: {
-  //               color: '#fff',
-  //               background: '#ff0000',
-  //             },
-  //             text: annotationText,
-  //             offsetY,
-  //           },
-  //         };
-
-  //         chart.addPointAnnotation(annotation);
-  //         setChartData((prevChartData) => ({
-  //           ...prevChartData,
-  //           annotations: [...prevChartData.annotations, annotation],
-  //         }));
-  //       }
-  //     },
-  //     [chartData.annotations],
-  //   );
 
   const direction =
     chartData.prevPrice < chartData.price
@@ -232,13 +186,13 @@ const Strategy = () => {
       <nav>
         <Link to={`/`}>Main</Link>
       </nav>
-      <div className="ticker">Sample Data</div>
+      {/* <div className="ticker">Sample Data</div>
       <div className={`price ${direction}`}>
         ${chartData.price} {directionEmojis[direction]}
-      </div>
-      <div className="price-time">
+      </div> */}
+      {/* <div className="price-time">
         {chartData.priceTime && chartData.priceTime.toLocaleTimeString()}
-      </div>
+      </div> */}
       <div style={{ textAlign: "right" }}>
         <button onClick={() => cycleButton(-1)}>Previous</button>
         <span style={{ margin: "0 10px" }}>{curStrategyData}</span>
@@ -249,7 +203,8 @@ const Strategy = () => {
         series={chartData.series}
         type="candlestick"
         width="100%"
-        height={320}
+        height="100%"
+        // height={320}
         ref={chartRef}
       />
     </div>

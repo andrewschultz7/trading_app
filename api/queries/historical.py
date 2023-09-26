@@ -6,6 +6,7 @@ from typing import List, Union
 import pandas as pd
 import psycopg2
 import simplejson as json
+
 # from sqlalchemy import create_engine
 from alpha_vantage.timeseries import TimeSeries
 from psycopg2.sql import SQL, Identifier
@@ -59,17 +60,6 @@ class StrategySignal(BaseModel):
     success: str
     stoploss: float
     level: float
-    open: float
-    high: float
-    low: float
-    close: float
-    volume: int
-    vwap: float
-    vwapf: float
-    ema009: float
-    ema021: float
-    ema200: float
-    tl01: float
 
 
 class DateTimeEncoder(json.JSONEncoder):
@@ -244,11 +234,9 @@ class SignalService:
                 with conn.cursor() as db:
                     result = db.execute(
                         """
-                        SELECT ss.*, td.*
-                        FROM strategy_signal AS ss
-                        JOIN trading_data AS td
-                        ON td.datetime >= ss.prebuffer AND td.datetime <= ss.postbuffer
-                        ORDER BY ss.timestart;
+                        SELECT *
+                        FROM strategy_signal
+                        ORDER BY prebuffer
                         """
                     )
                     response = [
@@ -268,24 +256,14 @@ class SignalService:
             success=record[5],
             stoploss=record[6],
             level=record[7],
-            open=record[10],
-            close=record[11],
-            high=record[12],
-            low=record[13],
-            volume=record[14],
-            vwap=record[15],
-            vwapf=record[16] or 0,
-            ema009=record[17],
-            ema021=record[18],
-            ema200=record[19],
-            tl01=record[20] or 0,
         )
 
-        # def use_threebar(self, data):
-        #     return self.threebar_repo.use_threebar(data)
+    # def get_all_strategy(self, data):
+    #     def use_threebar(self, data):
+    #         return self.threebar_repo.use_threebar(data)
 
-        # def use_trendline(self, data):
-        #     return self.trendline_repo.use_trendline(data)
+    #     def use_trendline(self, data):
+    #         return self.trendline_repo.use_trendline(data)
 
     #     def get(self):
     #         try:
